@@ -78,7 +78,7 @@ public static class DbSeeder
     }
 }
 
-file static class SeedCaseDefinitions
+internal static class SeedCaseDefinitions
 {
     public static IReadOnlyCollection<SeedCaseDefinition> All =>
     [
@@ -331,7 +331,7 @@ file static class SeedCaseDefinitions
     ];
 }
 
-file sealed record SeedCaseDefinition(
+internal sealed record SeedCaseDefinition(
     string FullName,
     string Sex,
     int Age,
@@ -339,8 +339,8 @@ file sealed record SeedCaseDefinition(
     string Triage,
     IReadOnlyCollection<SeedSectionDefinition> Sections);
 
-file sealed record SeedSectionDefinition(string Name, IReadOnlyCollection<SeedCategoryDefinition> Categories);
+internal sealed record SeedSectionDefinition(string Name, IReadOnlyCollection<SeedCategoryDefinition> Categories);
 
-file sealed record SeedCategoryDefinition(string Name, IReadOnlyCollection<SeedQuestionDefinition> Questions);
+internal sealed record SeedCategoryDefinition(string Name, IReadOnlyCollection<SeedQuestionDefinition> Questions);
 
-file sealed record SeedQuestionDefinition(string Question, string Answer);
+internal sealed record SeedQuestionDefinition(string Question, string Answer);
