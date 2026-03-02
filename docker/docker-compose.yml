@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: clinicasim-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: clinicasim
+      POSTGRES_PASSWORD: clinicasim_pwd
+      POSTGRES_DB: clinicasim_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - clinicasim_pgdata:/var/lib/postgresql/data
+
+volumes:
+  clinicasim_pgdata:
