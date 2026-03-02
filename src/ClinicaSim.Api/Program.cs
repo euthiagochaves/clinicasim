@@ -1,9 +1,16 @@
 using System.Text.Json;
+using ClinicaSim.Infrastructure.Persistence;
+using ClinicaSim.Infrastructure.Persistence.Seed;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 const string corsPolicyName = "CorsPolicy";
 
+var connectionString = builder.Configuration.GetConnectionString("ClinicaSim")
+    ?? throw new InvalidOperationException("Connection string 'ClinicaSim' was not found.");
+
+builder.Services.AddDbContext<ClinicaSimDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(corsPolicyName, policy =>
@@ -16,16 +23,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseCors(corsPolicyName);
-
-app.MapGet("/health", () => Results.Ok(new
-{
-    status = "ok",
-    service = "ClinicaSim.Api"
-}));
-
 if (app.Environment.IsDevelopment())
 {
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ClinicaSimDbContext>();
+    await dbContext.Database.MigrateAsync();
+    await DbSeeder.SeedAsync(dbContext);
+
     app.MapGet("/swagger/v1/swagger.json", (HttpContext context) =>
     {
         var serverUrl = $"{context.Request.Scheme}://{context.Request.Host.Value}";
@@ -89,5 +93,13 @@ if (app.Environment.IsDevelopment())
         "text/html"
     ));
 }
+
+app.UseCors(corsPolicyName);
+
+app.MapGet("/health", () => Results.Ok(new
+{
+    status = "ok",
+    service = "ClinicaSim.Api"
+}));
 
 app.Run();
