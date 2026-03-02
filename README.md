@@ -1,20 +1,6 @@
-# ClinicaSim - Tarefa 2
+# ClinicaSim - Tarefa 3
 
-Base do MVP com arquitetura em camadas + EF Core (PostgreSQL), migração inicial e seed idempotente de 3 casos clínicos fictícios em espanhol.
-
-## Estrutura
-
-```text
-.
-├── ClinicaSim.sln
-├── docker/
-│   └── docker-compose.yml
-└── src/
-    ├── ClinicaSim.Api
-    ├── ClinicaSim.Application
-    ├── ClinicaSim.Domain
-    └── ClinicaSim.Infrastructure
-```
+Backend MVP com arquitetura em camadas, EF Core/PostgreSQL, seed idempotente e API REST para fluxo completo de atendimento simulado.
 
 ## Pré-requisitos
 
@@ -22,22 +8,23 @@ Base do MVP com arquitetura em camadas + EF Core (PostgreSQL), migração inicia
 - Docker + Docker Compose
 - EF Core CLI (`dotnet tool install --global dotnet-ef` se necessário)
 
-## 1) Subir Postgres
+## Executar localmente
+
+1. Subir Postgres:
 
 ```bash
 cd docker
 docker compose up -d
 ```
 
-## 2) Aplicar migration
-
-A partir da raiz do repositório:
+2. Aplicar migration:
 
 ```bash
+cd ..
 dotnet ef database update --project src/ClinicaSim.Infrastructure --startup-project src/ClinicaSim.Api
 ```
 
-## 3) Rodar API
+3. Rodar API:
 
 ```bash
 dotnet run --project src/ClinicaSim.Api
@@ -46,36 +33,32 @@ dotnet run --project src/ClinicaSim.Api
 ## URLs úteis
 
 - Swagger (Development): `http://localhost:5101/swagger`
-- OpenAPI JSON (Development): `http://localhost:5101/swagger/v1/swagger.json`
 - Health: `http://localhost:5101/health`
 
-## Seed de dados
+## Endpoints REST (Tarefa 3)
 
-- O seed é idempotente e roda na inicialização da API em `Development`.
-- Se já existir registro em `clinical_cases`, não insere novamente.
-- São criados 3 casos clínicos fictícios em espanhol, com seções `Anamnesis` e `Examen Físico`, categorias e perguntas/respostas 1:1.
+- `GET /api/cases`
+- `POST /api/sessions/start`
+- `POST /api/sessions/{sessionCode}/events`
+- `GET /api/sessions/{sessionCode}`
+- `GET /api/sessions/{sessionCode}/note`
+- `POST /api/sessions/{sessionCode}/note`
+- `GET /api/sessions/{sessionCode}/differentials`
+- `POST /api/sessions/{sessionCode}/differentials`
+- `POST /api/sessions/{sessionCode}/finalize`
 
-## Como verificar seed no PostgreSQL
+## Regras principais
 
-Exemplo com `psql` no container:
+- `SessionCode` aleatório, 8-10 chars, alfanumérico (`ABCDEFGHJKLMNPQRSTUVWXYZ23456789`) e único.
+- Eventos registram snapshot de seção/categoria/pergunta/resposta.
+- Sessão finalizada (`Finalized`) bloqueia novos eventos, nota e diferenciais (retorna `409`).
+- Finalização exige nota completa e ao menos 5 diagnósticos diferenciais.
+- Mensagens de erro retornadas em espanhol.
+
+## Verificar seed
 
 ```bash
 docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from clinical_cases;"
 ```
 
 Esperado: `3`.
-
-Para conferir estrutura relacionada:
-
-```bash
-docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from case_sections;"
-docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from case_categories;"
-docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from case_questions;"
-docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from case_answers;"
-```
-
-## Notas
-
-- CORS policy `CorsPolicy` permite `http://localhost:4200` com métodos `GET,POST,PUT,DELETE,OPTIONS` e qualquer header.
-- `SessionCode` possui índice único no schema (`consultation_sessions`).
-- Nesta tarefa não há endpoints finais de casos/sessões, PDF ou frontend Angular.
