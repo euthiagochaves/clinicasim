@@ -77,18 +77,5 @@ Exemplo de retorno esperado em `/health`:
 - Headers liberados: qualquer header.
 - Nesta etapa não há EF Core, DbContext, migrations, entidades ou regras de negócio.
 
-### Erro comum de Swagger (CS1061)
-
-Se aparecer erro de `AddSwaggerGen`, `UseSwagger` ou `UseSwaggerUI`, execute restauração de pacotes antes do build:
-
-```bash
-cd src/ClinicaSim.Api
-dotnet restore
-```
-
-Depois:
-
-```bash
-cd ../..
-dotnet build ClinicaSim.sln
-```
+- Swagger em Development está disponível em `/swagger` com especificação em `/swagger/v1/swagger.json`.
+- Swagger UI utiliza assets via CDN (`unpkg`). Se sua rede bloquear CDNs, a rota abre mas sem renderização visual.
