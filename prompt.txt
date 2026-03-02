@@ -1,0 +1,233 @@
+VOCÊ É UM GERADOR DE CÓDIGO SÊNIOR. CRIE UM PROJETO COMPLETO CHAMADO “ClinicaSim” COM BACKEND EM .NET 8 (ASP.NET Core Web API) + EF CORE + POSTGRESQL E FRONTEND EM ANGULAR (SPA). O MVP TEM 3 TELAS (INICIAL -> LISTA DE PACIENTES -> ATENDIMENTO). SEM LOGIN.
+
+CONTEXTO / REGRAS DO MVP
+- Casos clínicos fictícios pré-carregados via SEED no banco (3 casos).
+- Aluno seleciona um caso na lista e inicia um atendimento.
+- Ao iniciar, backend cria uma “Session” com um SessionCode curto e aleatório (8 a 10 caracteres alfanuméricos). Esse código será usado futuramente como “código de usuário”, então deve ser curto e amigável.
+- O atendimento é baseado em perguntas pré-definidas (A1): o aluno CLICA em perguntas e o “paciente” retorna uma resposta pré-definida do caso.
+- Perguntas organizadas por SEÇÃO e CATEGORIA (opção 2):
+  - Seções: “Anamnesis” e “Examen Físico”
+  - Cada seção tem categorias (ex.: HDA, Alergias, Medicación, etc.)
+  - Cada categoria tem perguntas (texto) e cada pergunta tem 1 resposta (texto) no MVP.
+- A CADA clique em pergunta:
+  - Mostrar no feed/“chat” da UI (pergunta + resposta)
+  - Registrar imediatamente no backend um evento de log com timestamp (InteractionEvent)
+  - Se clicar repetido na mesma pergunta, registrar repetido (cada clique é um evento novo).
+- UI do feed:
+  - Não indicar se uma pergunta já foi feita
+  - Deve limpar automaticamente após 60 segundos de INATIVIDADE (desde o último clique).
+  - Ao limpar, deve sumir tudo sem mensagem, para forçar o aluno a lembrar.
+  - Importante: limpar SOMENTE a UI. No backend, o log continua salvo.
+- O aluno pode navegar livremente entre seções e repetir perguntas até finalizar.
+- “Historia Clínica” (módulo) contém campos obrigatórios preenchidos pelo aluno:
+  1) Resumen (obrigatório)
+  2) Diagnósticos diferenciales: mínimo 5 itens, ordenados do mais provável ao menos provável (obrigatório)
+     - ordenar por drag-and-drop no Angular
+  3) Diagnóstico probable (obrigatório)
+  4) Conducta (obrigatório) dividido em:
+     4a) Estudios sugeridos para confirmar
+     4b) Tratamiento si se confirma
+- Finalização:
+  - Só finaliza se TODOS os obrigatórios acima estiverem ok (incluindo mínimo 5 DDx).
+  - Após finalizar, sessão vira SOMENTE LEITURA (bloquear novos eventos e edições).
+  - Após finalizar, permitir apenas exportar PDF.
+- PDF:
+  - Gerado no BACKEND, template fixo.
+  - Deve conter: dados do caso, SessionCode, log completo com timestamps, e a história clínica do aluno (resumo, DDx ordenados, dx provável, conduta).
+- Professor:
+  - Sem painel admin.
+  - Acesso por SessionCode: GET PDF via SessionCode.
+
+IDIOMA
+- UI inicial em espanhol (textos/labels).
+- Deixe a estrutura do Angular preparada para i18n no futuro, mas NÃO implemente multi-idioma no MVP (apenas espanhol).
+
+BANCO
+- PostgreSQL (preferência).
+- Fornecer docker-compose para subir o Postgres.
+- EF Core migrations + seed.
+
+AGORA EXECUTE AS TAREFAS INCREMENTAIS ABAIXO. EM CADA TAREFA:
+- Modifique/Crie arquivos necessários.
+- Garanta build e execução.
+- Ao final, liste os principais arquivos criados/alterados e como rodar.
+
+========================
+TAREFA 1 — SOLUÇÃO E INFRA BASE
+========================
+1) Crie a solution ClinicaSim e os projetos:
+   - ClinicaSim.Api (ASP.NET Core Web API .NET 8)
+   - ClinicaSim.Domain (entidades)
+   - ClinicaSim.Application (use cases/services)
+   - ClinicaSim.Infrastructure (EF Core + repos + serviços)
+2) Referências:
+   - Api referencia Application e Infrastructure
+   - Application referencia Domain
+   - Infrastructure referencia Domain e Application (somente se necessário; evite circular)
+3) Configure Swagger na API.
+4) Crie docker-compose.yml com PostgreSQL (porta, user, password, db).
+5) Configure appsettings.json com connection string do Postgres.
+6) README.md com passo a passo: subir docker, rodar API.
+
+========================
+TAREFA 2 — MODELO DE DADOS + EF CORE + MIGRATIONS + SEED
+========================
+1) No Domain, crie entidades (com GUIDs):
+   - ClinicalCase: Id, FullName, Sex, Age, ChiefComplaint, Triage
+   - CaseSection: Id, CaseId, Name
+   - CaseCategory: Id, SectionId, Name
+   - CaseQuestion: Id, CategoryId, Text
+   - CaseAnswer: Id, QuestionId, Text (1:1)
+   - ConsultationSession: Id, SessionCode, CaseId, StartedAt, FinishedAt (nullable), Status (enum/string)
+   - InteractionEvent: Id, SessionId, OccurredAt, SectionName, CategoryName, QuestionText, AnswerText
+   - ClinicalNote: Id, SessionId, SummaryText, ProbableDiagnosisText, ConductStudiesText, ConductTreatmentText
+   - DifferentialDiagnosis: Id, SessionId, Rank (int), Text
+2) No Infrastructure, crie DbContext + Fluent API (relacionamentos/indices):
+   - Unique index em SessionCode
+   - Índices em CaseId/SessionId para performance básica
+3) Crie migrations e aplique.
+4) Seed inicial (3 casos fictícios) com seções/categorias/perguntas/respostas em espanhol.
+   - Pelo menos: Anamnesis + Examen Físico
+   - Cada seção com 4-6 categorias e 3-6 perguntas por categoria (pode ser enxuto, mas funcional).
+5) Atualize README com comandos de migrations.
+
+========================
+TAREFA 3 — API: CASOS + SESSÕES (SEM PDF AINDA)
+========================
+Implemente endpoints REST com DTOs e validação. Mensagens de erro em espanhol.
+1) GET /api/cases
+   - Retorna lista para triagem: caseId, fullName, chiefComplaint, triage, sex, age
+2) POST /api/sessions/start
+   - Input: caseId
+   - Cria ConsultationSession com SessionCode curto aleatório (8-10 alfanum) e StartedAt
+   - Retorna: sessionCode + dados do caso + estrutura (seções/categorias/perguntas) para o front renderizar
+3) POST /api/sessions/{sessionCode}/events
+   - Input: questionId (ou payload com sectionId/categoryId/questionId)
+   - Backend resolve a pergunta e resposta a partir do banco (não confiar no texto vindo do front)
+   - Cria InteractionEvent com OccurredAt=UtcNow e salva imediatamente
+   - Se sessão estiver Finalized, retornar 409
+4) GET /api/sessions/{sessionCode}
+   - Retorna status, startedAt/finishedAt e dados básicos (para export e conferência)
+5) POST /api/sessions/{sessionCode}/note
+   - Salva/atualiza ClinicalNote (rascunho)
+6) POST /api/sessions/{sessionCode}/differentials
+   - Salva lista ordenada de DDx (rank + text). Substituir a lista inteira em uma operação (simplifica)
+7) POST /api/sessions/{sessionCode}/finalize
+   - Valida: Summary preenchido, ProbableDiagnosis preenchido, ConductStudies e ConductTreatment preenchidos, e mínimo 5 DDx.
+   - Se ok: marcar sessão como Finalized, FinishedAt=UtcNow
+   - Depois disso, bloquear novos events/note/differentials (409)
+
+Observação: mantenha o backend como fonte da verdade. Não permita “finalize” sem persistir note e ddx.
+
+========================
+TAREFA 4 — PDF BACKEND (TEMPLATE FIXO)
+========================
+1) Implemente serviço de PDF no backend (Infrastructure):
+   - Template fixo com seções.
+   - O PDF deve conter:
+     a) Dados do caso (nome, idade, sexo, queixa principal, triage)
+     b) SessionCode
+     c) Log de interação: lista dos InteractionEvents em ordem asc (OccurredAt), incluindo timestamp (pode formatar)
+     d) Historia clínica do aluno: Summary, DDx ordenados, Diagnóstico probable, Conducta (Estudios + Tratamiento)
+2) Endpoint:
+   - GET /api/sessions/{sessionCode}/pdf
+   - Retorna application/pdf
+3) Se sessão não estiver Finalized, retornar 409 (só gera PDF final).
+
+========================
+TAREFA 5 — ANGULAR: BOOTSTRAP + ROTAS + API CLIENT
+========================
+1) Crie projeto Angular (LTS).
+2) Configure rotas:
+   - / (Inicial)
+   - /cases (Lista)
+   - /session/:sessionCode (Atendimento)
+3) Crie ApiClientService (HttpClient) com métodos para:
+   - getCases
+   - startSession
+   - postEvent
+   - getSession
+   - saveNote
+   - saveDifferentials
+   - finalize
+   - downloadPdf
+4) UI em espanhol (labels básicos). Não usar autenticação.
+
+========================
+TAREFA 6 — TELA INICIAL + LISTA DE PACIENTES
+========================
+1) Tela inicial (/):
+   - Botón “Comenzar” -> navega para /cases
+   - Seção “Exportar por código” (simples): input de sessionCode + botão “Descargar PDF”
+     - Chama downloadPdf (se 409, mostrar mensagem)
+2) Lista (/cases):
+   - Exibir lista com: Nombre completo + Motivo de consulta (chiefComplaint)
+   - Campo de busca (filtrar no front por nome ou queixa)
+   - Botón “Atender”:
+     - chama startSession(caseId)
+     - navega para /session/{sessionCode}
+
+========================
+TAREFA 7 — TELA DE ATENDIMENTO: 3 COLUNAS + FEED + TIMER 60S
+========================
+1) Layout 3 colunas:
+   - Esquerda:
+     - Tabs/Secciones: “Anamnesis”, “Examen Físico”, “Historia Clínica”
+     - Para Anamnesis/Examen: mostrar categorias e perguntas clicáveis
+   - Centro:
+     - Feed das interações (pergunta/resposta) mostrado na UI
+     - Ao clicar uma pergunta:
+       - chama postEvent
+       - adiciona item no feed (pergunta + resposta retornada do backend, ou resolve via dados carregados)
+       - reinicia timer de inatividade (60s)
+     - Se 60s sem clique, limpar feed COMPLETAMENTE sem mensagem
+   - Direita:
+     - Dados básicos do paciente/caso
+2) Não mostrar timestamp no feed.
+3) Não indicar pergunta já feita.
+
+========================
+TAREFA 8 — HISTORIA CLÍNICA: FORM OBRIGATÓRIO + DDx ORDENÁVEL + FINALIZAR
+========================
+1) Na aba “Historia Clínica”, exibir formulário:
+   - Resumen (textarea) obrigatório
+   - Diagnósticos diferenciales:
+     - mínimo 5 itens
+     - permitir adicionar/remover
+     - ordenar por drag-and-drop (mais provável em cima)
+   - Diagnóstico probable (textarea) obrigatório
+   - Conducta:
+     - Estudios sugeridos (textarea) obrigatório
+     - Tratamiento si se confirma (textarea) obrigatório
+2) Botón “Finalizar consulta”:
+   - salvar note + ddx
+   - chamar finalize
+   - se sucesso: bloquear UI (somente leitura) e mostrar botão “Descargar PDF”
+3) Após finalize:
+   - bloquear cliques de perguntas e edição de campos (somente leitura)
+   - permitir apenas downloadPdf
+
+========================
+TAREFA 9 — POLIMENTO + ROBUSTEZ
+========================
+1) Tratar erros (409, 404 etc.) com mensagens em espanhol.
+2) Garantir que sessionCode inválido mostre erro claro.
+3) Garantir que o timer não “vaze” (limpar subscriptions no Angular).
+4) Ajustar CORS para Angular local.
+5) README final com:
+   - docker compose up
+   - migrations
+   - dotnet run
+   - npm start
+
+LIMITAÇÕES DO MVP (NÃO IMPLEMENTAR)
+- Sem login/autenticação.
+- Sem Monitoreo (sinais vitais automáticos).
+- Sem Reloj (simulação de tempo/medicação).
+- Sem módulo de resposta do paciente ao tratamento.
+- Sem “paciente se recusar a responder” (deixar preparado para futuro, mas não implementar).
+
+ENTREGA FINAL
+- Código compilando e rodando.
+- Seed com 3 casos fictícios em espanhol.
+- PDF funcionando e acessível via sessionCode.
