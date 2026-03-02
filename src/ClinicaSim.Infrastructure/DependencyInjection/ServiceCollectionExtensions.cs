@@ -10,6 +10,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped<ICasesService, CasesService>();
         services.AddScoped<ISessionsService, SessionsService>();
+        services.AddScoped<IPdfReportService, PdfReportService>();
         return services;
     }
 }
