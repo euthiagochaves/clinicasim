@@ -3,6 +3,7 @@ import { NgFor, NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiClientService } from '../../core/services/api-client.service';
+import { SessionStateService } from '../../core/services/session-state.service';
 import { CaseListItemDto } from '../../models/api.models';
 
 @Component({
@@ -48,7 +49,11 @@ export class CaseListComponent implements OnInit {
   loadingCaseId: string | null = null;
   actionError = '';
 
-  constructor(private readonly apiClient: ApiClientService, private readonly router: Router) {}
+  constructor(
+    private readonly apiClient: ApiClientService,
+    private readonly sessionStateService: SessionStateService,
+    private readonly router: Router
+  ) {}
 
   ngOnInit(): void {
     this.apiClient.getCases().subscribe({
@@ -83,6 +88,7 @@ export class CaseListComponent implements OnInit {
     this.apiClient.startSession({ caseId }).subscribe({
       next: (result) => {
         this.loadingCaseId = null;
+        this.sessionStateService.setCurrentSession(result);
         this.router.navigateByUrl(`/session/${result.sessionCode}`);
       },
       error: () => {
