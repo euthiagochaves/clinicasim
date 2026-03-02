@@ -1,8 +1,8 @@
-# ClinicaSim - Tarefa 1
+# ClinicaSim - Tarefa 2
 
-Estrutura inicial do MVP ClinicaSim com separação por camadas, API .NET 8 mínima, Swagger, CORS para Angular local e infraestrutura base com PostgreSQL via Docker Compose.
+Base do MVP com arquitetura em camadas + EF Core (PostgreSQL), migração inicial e seed idempotente de 3 casos clínicos fictícios em espanhol.
 
-## Estrutura do projeto
+## Estrutura
 
 ```text
 .
@@ -18,77 +18,64 @@ Estrutura inicial do MVP ClinicaSim com separação por camadas, API .NET 8 mín
 
 ## Pré-requisitos
 
-- [.NET SDK 8.0+](https://dotnet.microsoft.com/download)
-- [Docker](https://www.docker.com/) com Docker Compose habilitado
+- .NET SDK 8.0+
+- Docker + Docker Compose
+- EF Core CLI (`dotnet tool install --global dotnet-ef` se necessário)
 
-## Subir o PostgreSQL
-
-Na raiz do repositório:
+## 1) Subir Postgres
 
 ```bash
 cd docker
 docker compose up -d
 ```
 
-Para verificar se o container subiu:
+## 2) Aplicar migration
+
+A partir da raiz do repositório:
 
 ```bash
-docker compose ps
+dotnet ef database update --project src/ClinicaSim.Infrastructure --startup-project src/ClinicaSim.Api
 ```
 
-Configuração aplicada no PostgreSQL:
-
-- **Usuário:** `clinicasim`
-- **Senha:** `clinicasim_pwd`
-- **Database:** `clinicasim_db`
-- **Porta:** `5432`
-- **Volume persistente:** `clinicasim_pgdata`
-
-## Rodar a API
-
-Na raiz do repositório:
+## 3) Rodar API
 
 ```bash
-cd src/ClinicaSim.Api
-dotnet run
+dotnet run --project src/ClinicaSim.Api
 ```
 
 ## URLs úteis
 
-Com a API rodando em ambiente Development:
-
-- Swagger: `http://localhost:5101/swagger`
+- Swagger (Development): `http://localhost:5101/swagger`
+- OpenAPI JSON (Development): `http://localhost:5101/swagger/v1/swagger.json`
 - Health: `http://localhost:5101/health`
 
-Exemplo de retorno esperado em `/health`:
+## Seed de dados
 
-```json
-{
-  "status": "ok",
-  "service": "ClinicaSim.Api"
-}
-```
+- O seed é idempotente e roda na inicialização da API em `Development`.
+- Se já existir registro em `clinical_cases`, não insere novamente.
+- São criados 3 casos clínicos fictícios em espanhol, com seções `Anamnesis` e `Examen Físico`, categorias e perguntas/respostas 1:1.
 
-## Observações
+## Como verificar seed no PostgreSQL
 
-- A policy de CORS `CorsPolicy` está aplicada globalmente na API.
-- Origem permitida para frontend local: `http://localhost:4200`.
-- Métodos permitidos: `GET`, `POST`, `PUT`, `DELETE`, `OPTIONS`.
-- Headers liberados: qualquer header.
-- Nesta etapa não há EF Core, DbContext, migrations, entidades ou regras de negócio.
-
-### Erro comum de Swagger (CS1061)
-
-Se aparecer erro de `AddSwaggerGen`, `UseSwagger` ou `UseSwaggerUI`, execute restauração de pacotes antes do build:
+Exemplo com `psql` no container:
 
 ```bash
-cd src/ClinicaSim.Api
-dotnet restore
+docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from clinical_cases;"
 ```
 
-Depois:
+Esperado: `3`.
+
+Para conferir estrutura relacionada:
 
 ```bash
-cd ../..
-dotnet build ClinicaSim.sln
+docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from case_sections;"
+docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from case_categories;"
+docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from case_questions;"
+docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "select count(*) from case_answers;"
 ```
+
+## Notas
+
+- CORS policy `CorsPolicy` permite `http://localhost:4200` com métodos `GET,POST,PUT,DELETE,OPTIONS` e qualquer header.
+- `SessionCode` possui índice único no schema (`consultation_sessions`).
+- Nesta tarefa não há endpoints finais de casos/sessões, PDF ou frontend Angular.
