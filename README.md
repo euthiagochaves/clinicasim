@@ -46,6 +46,7 @@ dotnet run --project src/ClinicaSim.Api
 - `GET /api/sessions/{sessionCode}/differentials`
 - `POST /api/sessions/{sessionCode}/differentials`
 - `POST /api/sessions/{sessionCode}/finalize`
+- `GET /api/sessions/{sessionCode}/pdf` (solo para sesión finalizada)
 
 ## Regras principais
 
@@ -62,3 +63,21 @@ docker exec -it clinicasim-postgres psql -U clinicasim -d clinicasim_db -c "sele
 ```
 
 Esperado: `3`.
+
+
+## Probar generación de PDF (Tarea 4)
+
+Flujo mínimo en Swagger:
+
+1. `GET /api/cases`
+2. `POST /api/sessions/start`
+3. `POST /api/sessions/{code}/events` (registrar algunos eventos)
+4. `POST /api/sessions/{code}/note`
+5. `POST /api/sessions/{code}/differentials` (5 o más)
+6. `POST /api/sessions/{code}/finalize`
+7. `GET /api/sessions/{code}/pdf`
+
+Comportamiento esperado de `/pdf`:
+- `404` si la sesión no existe.
+- `409` con `{ "error": "La sesión no está finalizada. No se puede generar el PDF." }` si está activa.
+- `200` con `application/pdf` si está finalizada.

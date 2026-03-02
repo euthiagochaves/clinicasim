@@ -8,7 +8,7 @@ namespace ClinicaSim.Api.Controllers;
 
 [ApiController]
 [Route("api/sessions")]
-public class SessionsController(ISessionsService sessionsService) : ControllerBase
+public class SessionsController(ISessionsService sessionsService, IPdfReportService pdfReportService) : ControllerBase
 {
     [HttpPost("start")]
     public async Task<ActionResult<StartSessionResponse>> Start([FromBody] StartSessionRequest request, CancellationToken cancellationToken)
@@ -120,6 +120,29 @@ public class SessionsController(ISessionsService sessionsService) : ControllerBa
         {
             var result = await sessionsService.FinalizeAsync(sessionCode, cancellationToken);
             return Ok(new FinalizeResponse(result.SessionCode, result.Status, result.FinishedAt));
+        }
+        catch (AppException ex)
+        {
+            return StatusCode(ex.StatusCode, new ErrorResponse(ex.Errors));
+        }
+    }
+
+
+    [HttpGet("{sessionCode}/pdf")]
+    public async Task<IActionResult> GetPdf(string sessionCode, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var bytes = await pdfReportService.GenerateSessionPdfAsync(sessionCode, cancellationToken);
+            return File(bytes, "application/pdf", $"ClinicaSim_{sessionCode}.pdf");
+        }
+        catch (AppException ex) when (ex.StatusCode == 404)
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (AppException ex) when (ex.StatusCode == 409)
+        {
+            return Conflict(new { error = ex.Message });
         }
         catch (AppException ex)
         {
