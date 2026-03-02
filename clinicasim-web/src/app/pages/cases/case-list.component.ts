@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiClientService } from '../../core/services/api-client.service';
 import { CaseListItemDto } from '../../models/api.models';
@@ -7,42 +8,87 @@ import { CaseListItemDto } from '../../models/api.models';
 @Component({
   selector: 'app-case-list',
   standalone: true,
-  imports: [NgFor, NgIf],
+  imports: [NgFor, NgIf, FormsModule],
   template: `
-    <h2>Lista de pacientes</h2>
-    <p>Seleccione un caso para iniciar una sesión.</p>
+    <h2>Pacientes</h2>
 
-    <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+    <input
+      [(ngModel)]="searchTerm"
+      (ngModelChange)="applyFilter()"
+      placeholder="Buscar por nombre o motivo de consulta"
+    />
 
-    <ul>
-      <li *ngFor="let item of cases">
-        <strong>{{ item.fullName }}</strong> — {{ item.age }} años — {{ item.sex }} — {{ item.triage }}
+    <p *ngIf="isLoading">Cargando...</p>
+    <p *ngIf="!isLoading && loadError" class="error">Error al cargar pacientes.</p>
+    <p *ngIf="actionError" class="error">{{ actionError }}</p>
+
+    <ul *ngIf="!isLoading && !loadError">
+      <li *ngFor="let item of filteredCases" style="margin-bottom: 12px;">
+        <strong>{{ item.fullName }}</strong>
+        <span style="margin-left: 8px; font-size: 12px;">({{ item.triage }})</span>
         <br />
         <small>{{ item.chiefComplaint }}</small>
         <br />
-        <button (click)="startSession(item.caseId)">Iniciar sesión</button>
+        <button (click)="startSession(item.caseId)" [disabled]="loadingCaseId === item.caseId">
+          {{ loadingCaseId === item.caseId ? 'Iniciando...' : 'Atender' }}
+        </button>
       </li>
     </ul>
+
+    <p *ngIf="!isLoading && !loadError && filteredCases.length === 0">No se encontraron pacientes.</p>
   `
 })
 export class CaseListComponent implements OnInit {
   cases: CaseListItemDto[] = [];
-  errorMessage = '';
+  filteredCases: CaseListItemDto[] = [];
+  searchTerm = '';
+
+  isLoading = true;
+  loadError = false;
+  loadingCaseId: string | null = null;
+  actionError = '';
 
   constructor(private readonly apiClient: ApiClientService, private readonly router: Router) {}
 
   ngOnInit(): void {
     this.apiClient.getCases().subscribe({
-      next: (items) => (this.cases = items),
-      error: () => (this.errorMessage = 'No se pudieron cargar los casos.')
+      next: (items) => {
+        this.cases = items;
+        this.applyFilter();
+        this.isLoading = false;
+      },
+      error: () => {
+        this.loadError = true;
+        this.isLoading = false;
+      }
     });
   }
 
+  applyFilter(): void {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredCases = [...this.cases];
+      return;
+    }
+
+    this.filteredCases = this.cases.filter((item) =>
+      item.fullName.toLowerCase().includes(term) || item.chiefComplaint.toLowerCase().includes(term)
+    );
+  }
+
   startSession(caseId: string): void {
-    this.errorMessage = '';
+    this.actionError = '';
+    this.loadingCaseId = caseId;
+
     this.apiClient.startSession({ caseId }).subscribe({
-      next: (result) => this.router.navigateByUrl(`/session/${result.sessionCode}`),
-      error: () => (this.errorMessage = 'No se pudo iniciar la sesión.')
+      next: (result) => {
+        this.loadingCaseId = null;
+        this.router.navigateByUrl(`/session/${result.sessionCode}`);
+      },
+      error: () => {
+        this.loadingCaseId = null;
+        this.actionError = 'No se pudo iniciar la sesión.';
+      }
     });
   }
 }
