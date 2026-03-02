@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ApiClientService } from '../../core/services/api-client.service';
 
 @Component({
@@ -16,15 +17,18 @@ import { ApiClientService } from '../../core/services/api-client.service';
 
     <hr />
     <h3>Exportar por código</h3>
-    <input [(ngModel)]="sessionCode" placeholder="Código de sesión" />
-    <button (click)="downloadPdf()">Descargar PDF</button>
+    <input [(ngModel)]="sessionCode" placeholder="Ingrese el código de sesión" />
+    <button (click)="downloadPdf()" [disabled]="isDownloading">
+      {{ isDownloading ? 'Descargando...' : 'Descargar PDF' }}
+    </button>
 
-    <p *ngIf="errorMessage" class="error">{{ errorMessage }}</p>
+    <p *ngIf="message" class="error">{{ message }}</p>
   `
 })
 export class HomeComponent {
   sessionCode = '';
-  errorMessage = '';
+  message = '';
+  isDownloading = false;
 
   constructor(private readonly router: Router, private readonly apiClient: ApiClientService) {}
 
@@ -33,24 +37,36 @@ export class HomeComponent {
   }
 
   downloadPdf(): void {
-    this.errorMessage = '';
+    this.message = '';
 
-    if (!this.sessionCode.trim()) {
-      this.errorMessage = 'Ingrese un código de sesión.';
+    const code = this.sessionCode.trim();
+    if (!code) {
+      this.message = 'Ingrese un código.';
       return;
     }
 
-    this.apiClient.downloadPdf(this.sessionCode.trim()).subscribe({
+    this.isDownloading = true;
+
+    this.apiClient.downloadPdf(code).subscribe({
       next: (blob) => {
         const url = window.URL.createObjectURL(blob);
         const anchor = document.createElement('a');
         anchor.href = url;
-        anchor.download = `ClinicaSim_${this.sessionCode.trim()}.pdf`;
+        anchor.download = `ClinicaSim_${code}.pdf`;
         anchor.click();
         window.URL.revokeObjectURL(url);
+        this.isDownloading = false;
       },
-      error: () => {
-        this.errorMessage = 'No se pudo descargar el PDF para ese código.';
+      error: (error: HttpErrorResponse) => {
+        if (error.status === 404) {
+          this.message = 'Código no encontrado.';
+        } else if (error.status === 409) {
+          this.message = 'La sesión no está finalizada.';
+        } else {
+          this.message = 'Error al descargar el PDF.';
+        }
+
+        this.isDownloading = false;
       }
     });
   }
