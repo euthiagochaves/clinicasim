@@ -46,14 +46,14 @@ if (app.Environment.IsDevelopment())
             {
                 new { url = serverUrl }
             },
-            paths = new
+            paths = new Dictionary<string, object>
             {
                 ["/health"] = new
                 {
                     get = new
                     {
                         tags = new[] { "Health" },
-                        responses = new
+                        responses = new Dictionary<string, object>
                         {
                             ["200"] = new
                             {
