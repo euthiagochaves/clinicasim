@@ -16,15 +16,16 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// 1) services (antes do builder.Build())
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy(corsPolicyName, policy =>
-    {
+    options.AddPolicy("DevCors", policy =>
         policy.WithOrigins("http://localhost:4200")
-            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .AllowAnyHeader();
-    });
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+    );
 });
+
 
 var app = builder.Build();
 
@@ -41,11 +42,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseCors(corsPolicyName);
 
+app.UseCors("DevCors");
+
 app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "ok",
     service = "ClinicaSim.Api"
 }));
+
+
 
 app.Run();
