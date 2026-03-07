@@ -33,7 +33,7 @@ public class AdminFindingService(ClinicaSimDbContext dbContext) : IAdminFindingS
         return await query
             .OrderBy(x => x.System)
             .ThenBy(x => x.Name)
-            .Select(Map)
+            .Select(x => new AdminFindingItem(x.Id, x.Name, x.System, x.Tags, x.Active, x.CreatedAt, x.UpdatedAt))
             .ToListAsync(cancellationToken);
     }
 
@@ -42,7 +42,7 @@ public class AdminFindingService(ClinicaSimDbContext dbContext) : IAdminFindingS
         var item = await dbContext.PhysicalFindingBanks
             .AsNoTracking()
             .Where(x => x.Id == id)
-            .Select(Map)
+            .Select(x => new AdminFindingItem(x.Id, x.Name, x.System, x.Tags, x.Active, x.CreatedAt, x.UpdatedAt))
             .FirstOrDefaultAsync(cancellationToken);
 
         return item ?? throw new AppException("Hallazgo no encontrado.", 404);

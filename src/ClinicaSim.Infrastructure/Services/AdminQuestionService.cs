@@ -38,7 +38,7 @@ public class AdminQuestionService(ClinicaSimDbContext dbContext) : IAdminQuestio
 
         return await query
             .OrderBy(x => x.Text)
-            .Select(Map)
+            .Select(x => new AdminQuestionItem(x.Id, x.Text, x.Section, x.Category, x.Tags, x.Active, x.CreatedAt, x.UpdatedAt))
             .ToListAsync(cancellationToken);
     }
 
@@ -47,7 +47,7 @@ public class AdminQuestionService(ClinicaSimDbContext dbContext) : IAdminQuestio
         var item = await dbContext.QuestionBanks
             .AsNoTracking()
             .Where(x => x.Id == id)
-            .Select(Map)
+            .Select(x => new AdminQuestionItem(x.Id, x.Text, x.Section, x.Category, x.Tags, x.Active, x.CreatedAt, x.UpdatedAt))
             .FirstOrDefaultAsync(cancellationToken);
 
         return item ?? throw new AppException("Pregunta no encontrada.", 404);
