@@ -11,6 +11,7 @@ public class CasesService(ClinicaSimDbContext dbContext) : ICasesService
     {
         return await dbContext.ClinicalCases
             .AsNoTracking()
+            .Where(x => x.Active)
             .OrderBy(x => x.FullName)
             .Select(x => new CaseListItem(x.Id, x.FullName, x.Age, x.Sex, x.ChiefComplaint, x.Triage))
             .ToListAsync(cancellationToken);
