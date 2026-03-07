@@ -168,6 +168,7 @@ public static class DbSeeder
 
     private static ClinicalCase BuildCase(SeedCaseDefinition definition)
     {
+        var now = DateTimeOffset.UtcNow;
         var clinicalCase = new ClinicalCase
         {
             Id = Guid.NewGuid(),
@@ -175,7 +176,10 @@ public static class DbSeeder
             Sex = definition.Sex,
             Age = definition.Age,
             ChiefComplaint = definition.ChiefComplaint,
-            Triage = definition.Triage
+            Triage = definition.Triage,
+            Active = true,
+            CreatedAt = now,
+            UpdatedAt = now
         };
 
         foreach (var sectionDefinition in definition.Sections)

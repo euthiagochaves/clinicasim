@@ -259,6 +259,12 @@ partial class ClinicaSimDbContextModelSnapshot : ModelSnapshot
                 .HasColumnType("integer")
                 .HasColumnName("age");
 
+            b.Property<bool>("Active")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("boolean")
+                .HasColumnName("active")
+                .HasDefaultValue(true);
+
             b.Property<string>("ChiefComplaint")
                 .IsRequired()
                 .HasMaxLength(300)
@@ -271,6 +277,10 @@ partial class ClinicaSimDbContextModelSnapshot : ModelSnapshot
                 .HasColumnType("character varying(200)")
                 .HasColumnName("full_name");
 
+            b.Property<DateTimeOffset>("CreatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("created_at");
+
             b.Property<string>("Sex")
                 .IsRequired()
                 .HasMaxLength(20)
@@ -282,6 +292,10 @@ partial class ClinicaSimDbContextModelSnapshot : ModelSnapshot
                 .HasMaxLength(20)
                 .HasColumnType("character varying(20)")
                 .HasColumnName("triage");
+
+            b.Property<DateTimeOffset>("UpdatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("updated_at");
 
             b.HasKey("Id")
                 .HasName("pk_clinical_cases");

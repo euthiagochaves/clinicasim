@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
         services.AddScoped<ICasesService, CasesService>();
+        services.AddScoped<IAdminCaseService, AdminCaseService>();
         services.AddScoped<IAdminQuestionService, AdminQuestionService>();
         services.AddScoped<IAdminFindingService, AdminFindingService>();
         services.AddScoped<IQuestionBankService, QuestionBankService>();

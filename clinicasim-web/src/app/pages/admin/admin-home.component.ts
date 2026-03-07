@@ -11,6 +11,7 @@ import { RouterLink } from '@angular/router';
     <div class="admin-menu">
       <a routerLink="/admin/questions">Preguntas</a>
       <a routerLink="/admin/findings">Hallazgos</a>
+      <a routerLink="/admin/cases">Casos</a>
     </div>
   `
 })

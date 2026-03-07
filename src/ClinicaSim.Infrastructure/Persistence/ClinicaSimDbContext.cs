@@ -32,6 +32,9 @@ public class ClinicaSimDbContext(DbContextOptions<ClinicaSimDbContext> options) 
             entity.Property(x => x.Age).HasColumnName("age").IsRequired();
             entity.Property(x => x.ChiefComplaint).HasColumnName("chief_complaint").IsRequired().HasMaxLength(300);
             entity.Property(x => x.Triage).HasColumnName("triage").IsRequired().HasMaxLength(20);
+            entity.Property(x => x.Active).HasColumnName("active").HasDefaultValue(true).IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
 
             entity.HasMany(x => x.Sections)
                 .WithOne(x => x.Case)
