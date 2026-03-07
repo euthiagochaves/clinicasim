@@ -1,10 +1,14 @@
 using System;
+using ClinicaSim.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace ClinicaSim.Infrastructure.Migrations;
 
+[DbContext(typeof(ClinicaSimDbContext))]
+[Migration("20261015000000_AddGlobalQuestionAndFindingBanks")]
 public partial class AddGlobalQuestionAndFindingBanks : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)

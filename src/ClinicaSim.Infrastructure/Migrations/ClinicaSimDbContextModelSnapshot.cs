@@ -18,6 +18,48 @@ partial class ClinicaSimDbContextModelSnapshot : ModelSnapshot
             .HasAnnotation("ProductVersion", "8.0.8")
             .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
+
+        modelBuilder.Entity("ClinicaSim.Domain.Entities.CasePhysicalFinding", b =>
+        {
+            b.HasOne("ClinicaSim.Domain.Entities.ClinicalCase", "Case")
+                .WithMany("PhysicalFindings")
+                .HasForeignKey("CaseId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired()
+                .HasConstraintName("fk_case_physical_findings_clinical_cases_case_id");
+
+            b.HasOne("ClinicaSim.Domain.Entities.PhysicalFindingBank", "Finding")
+                .WithMany("CasePhysicalFindings")
+                .HasForeignKey("FindingId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired()
+                .HasConstraintName("fk_case_physical_findings_physical_finding_bank_finding_id");
+
+            b.Navigation("Case");
+
+            b.Navigation("Finding");
+        });
+
+        modelBuilder.Entity("ClinicaSim.Domain.Entities.CaseQuestionAnswer", b =>
+        {
+            b.HasOne("ClinicaSim.Domain.Entities.ClinicalCase", "Case")
+                .WithMany("QuestionAnswers")
+                .HasForeignKey("CaseId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired()
+                .HasConstraintName("fk_case_question_answers_clinical_cases_case_id");
+
+            b.HasOne("ClinicaSim.Domain.Entities.QuestionBank", "Question")
+                .WithMany("CaseQuestionAnswers")
+                .HasForeignKey("QuestionId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired()
+                .HasConstraintName("fk_case_question_answers_question_bank_question_id");
+
+            b.Navigation("Case");
+
+            b.Navigation("Question");
+        });
         modelBuilder.Entity("ClinicaSim.Domain.Entities.CaseAnswer", b =>
         {
             b.Property<Guid>("Id")
@@ -95,6 +137,91 @@ partial class ClinicaSimDbContextModelSnapshot : ModelSnapshot
             b.ToTable("case_questions", (string)null);
         });
 
+
+        modelBuilder.Entity("ClinicaSim.Domain.Entities.CasePhysicalFinding", b =>
+        {
+            b.Property<Guid>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("uuid")
+                .HasColumnName("id");
+
+            b.Property<Guid>("CaseId")
+                .HasColumnType("uuid")
+                .HasColumnName("case_id");
+
+            b.Property<DateTimeOffset>("CreatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("created_at");
+
+            b.Property<string>("DetailText")
+                .HasColumnType("text")
+                .HasColumnName("detail_text");
+
+            b.Property<Guid>("FindingId")
+                .HasColumnType("uuid")
+                .HasColumnName("finding_id");
+
+            b.Property<bool>("Present")
+                .HasColumnType("boolean")
+                .HasColumnName("present");
+
+            b.Property<DateTimeOffset>("UpdatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("updated_at");
+
+            b.HasKey("Id")
+                .HasName("pk_case_physical_findings");
+
+            b.HasIndex("CaseId", "FindingId")
+                .IsUnique()
+                .HasDatabaseName("ix_case_physical_findings_case_id_finding_id");
+
+            b.HasIndex("FindingId")
+                .HasDatabaseName("ix_case_physical_findings_finding_id");
+
+            b.ToTable("case_physical_findings", (string)null);
+        });
+
+        modelBuilder.Entity("ClinicaSim.Domain.Entities.CaseQuestionAnswer", b =>
+        {
+            b.Property<Guid>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("uuid")
+                .HasColumnName("id");
+
+            b.Property<string>("AnswerText")
+                .IsRequired()
+                .HasColumnType("text")
+                .HasColumnName("answer_text");
+
+            b.Property<Guid>("CaseId")
+                .HasColumnType("uuid")
+                .HasColumnName("case_id");
+
+            b.Property<DateTimeOffset>("CreatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("created_at");
+
+            b.Property<Guid>("QuestionId")
+                .HasColumnType("uuid")
+                .HasColumnName("question_id");
+
+            b.Property<DateTimeOffset>("UpdatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("updated_at");
+
+            b.HasKey("Id")
+                .HasName("pk_case_question_answers");
+
+            b.HasIndex("CaseId", "QuestionId")
+                .IsUnique()
+                .HasDatabaseName("ix_case_question_answers_case_id_question_id");
+
+            b.HasIndex("QuestionId")
+                .HasDatabaseName("ix_case_question_answers_question_id");
+
+            b.ToTable("case_question_answers", (string)null);
+        });
         modelBuilder.Entity("ClinicaSim.Domain.Entities.CaseSection", b =>
         {
             b.Property<Guid>("Id")
@@ -280,6 +407,102 @@ partial class ClinicaSimDbContextModelSnapshot : ModelSnapshot
             b.ToTable("differential_diagnoses", (string)null);
         });
 
+
+        modelBuilder.Entity("ClinicaSim.Domain.Entities.PhysicalFindingBank", b =>
+        {
+            b.Property<Guid>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("uuid")
+                .HasColumnName("id");
+
+            b.Property<bool>("Active")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("boolean")
+                .HasColumnName("active")
+                .HasDefaultValue(true);
+
+            b.Property<DateTimeOffset>("CreatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("created_at");
+
+            b.Property<string>("Name")
+                .IsRequired()
+                .HasColumnType("text")
+                .HasColumnName("name");
+
+            b.Property<string>("System")
+                .IsRequired()
+                .HasMaxLength(80)
+                .HasColumnType("character varying(80)")
+                .HasColumnName("system");
+
+            b.Property<string>("Tags")
+                .HasColumnType("text")
+                .HasColumnName("tags");
+
+            b.Property<DateTimeOffset>("UpdatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("updated_at");
+
+            b.HasKey("Id")
+                .HasName("pk_physical_finding_bank");
+
+            b.HasIndex("System", "Name")
+                .HasDatabaseName("ix_physical_finding_bank_system_name");
+
+            b.ToTable("physical_finding_bank", (string)null);
+        });
+
+        modelBuilder.Entity("ClinicaSim.Domain.Entities.QuestionBank", b =>
+        {
+            b.Property<Guid>("Id")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("uuid")
+                .HasColumnName("id");
+
+            b.Property<bool>("Active")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("boolean")
+                .HasColumnName("active")
+                .HasDefaultValue(true);
+
+            b.Property<string>("Category")
+                .IsRequired()
+                .HasMaxLength(120)
+                .HasColumnType("character varying(120)")
+                .HasColumnName("category");
+
+            b.Property<DateTimeOffset>("CreatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("created_at");
+
+            b.Property<string>("Section")
+                .IsRequired()
+                .HasMaxLength(80)
+                .HasColumnType("character varying(80)")
+                .HasColumnName("section");
+
+            b.Property<string>("Tags")
+                .HasColumnType("text")
+                .HasColumnName("tags");
+
+            b.Property<string>("Text")
+                .IsRequired()
+                .HasColumnType("text")
+                .HasColumnName("text");
+
+            b.Property<DateTimeOffset>("UpdatedAt")
+                .HasColumnType("timestamp with time zone")
+                .HasColumnName("updated_at");
+
+            b.HasKey("Id")
+                .HasName("pk_question_bank");
+
+            b.HasIndex("Text")
+                .HasDatabaseName("ix_question_bank_text");
+
+            b.ToTable("question_bank", (string)null);
+        });
         modelBuilder.Entity("ClinicaSim.Domain.Entities.InteractionEvent", b =>
         {
             b.Property<Guid>("Id")
@@ -439,7 +662,21 @@ partial class ClinicaSimDbContextModelSnapshot : ModelSnapshot
 
         modelBuilder.Entity("ClinicaSim.Domain.Entities.ClinicalCase", b =>
         {
+            b.Navigation("PhysicalFindings");
+
+            b.Navigation("QuestionAnswers");
+
             b.Navigation("Sections");
+        });
+
+        modelBuilder.Entity("ClinicaSim.Domain.Entities.PhysicalFindingBank", b =>
+        {
+            b.Navigation("CasePhysicalFindings");
+        });
+
+        modelBuilder.Entity("ClinicaSim.Domain.Entities.QuestionBank", b =>
+        {
+            b.Navigation("CaseQuestionAnswers");
         });
 
         modelBuilder.Entity("ClinicaSim.Domain.Entities.ConsultationSession", b =>
