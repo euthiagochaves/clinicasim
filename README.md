@@ -81,3 +81,22 @@ Comportamiento esperado de `/pdf`:
 - `404` si la sesión no existe.
 - `409` con `{ "error": "La sesión no está finalizada. No se puede generar el PDF." }` si está activa.
 - `200` con `application/pdf` si está finalizada.
+
+
+## Frontend (Admin)
+
+No estado atual deste repositório, o frontend Angular está em `clinicasim-web`.
+
+Comandos:
+
+```bash
+cd clinicasim-web
+npm install
+npm start
+```
+
+Rotas admin úteis:
+- `/admin`
+- `/admin/questions`
+- `/admin/findings`
+- `/admin/cases`
