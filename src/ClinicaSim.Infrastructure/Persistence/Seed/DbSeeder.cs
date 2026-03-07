@@ -7,16 +7,163 @@ public static class DbSeeder
 {
     public static async Task SeedAsync(ClinicaSimDbContext dbContext, CancellationToken cancellationToken = default)
     {
-        if (await dbContext.ClinicalCases.AnyAsync(cancellationToken))
+        await SeedQuestionBankAsync(dbContext, cancellationToken);
+        await SeedFindingBankAsync(dbContext, cancellationToken);
+
+        if (!await dbContext.ClinicalCases.AnyAsync(cancellationToken))
+        {
+            var definitions = SeedCaseDefinitions.All;
+            var clinicalCases = definitions.Select(BuildCase).ToList();
+
+            await dbContext.ClinicalCases.AddRangeAsync(clinicalCases, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        await SeedCaseMappingsAsync(dbContext, cancellationToken);
+    }
+
+    private static async Task SeedQuestionBankAsync(ClinicaSimDbContext dbContext, CancellationToken cancellationToken)
+    {
+        if (await dbContext.QuestionBanks.AnyAsync(cancellationToken))
         {
             return;
         }
 
-        var definitions = SeedCaseDefinitions.All;
-        var clinicalCases = definitions.Select(BuildCase).ToList();
+        var now = DateTimeOffset.UtcNow;
+        var questions = new[]
+        {
+            new QuestionBank { Id = Guid.NewGuid(), Text = "¿Dónde le duele?", Section = "ANAMNESIS", Category = "Dolor", Active = true, CreatedAt = now, UpdatedAt = now },
+            new QuestionBank { Id = Guid.NewGuid(), Text = "¿Desde cuándo comenzó?", Section = "ANAMNESIS", Category = "Tiempo de evolución", Active = true, CreatedAt = now, UpdatedAt = now },
+            new QuestionBank { Id = Guid.NewGuid(), Text = "¿Tiene fiebre?", Section = "ANAMNESIS", Category = "Fiebre", Active = true, CreatedAt = now, UpdatedAt = now },
+            new QuestionBank { Id = Guid.NewGuid(), Text = "¿Tiene náuseas?", Section = "ANAMNESIS", Category = "Síntomas asociados", Active = true, CreatedAt = now, UpdatedAt = now },
+            new QuestionBank { Id = Guid.NewGuid(), Text = "¿Está tomando alguna medicación?", Section = "ANAMNESIS", Category = "Medicaciones", Active = true, CreatedAt = now, UpdatedAt = now },
+            new QuestionBank { Id = Guid.NewGuid(), Text = "¿Tiene alergias?", Section = "ANAMNESIS", Category = "Alergias", Active = true, CreatedAt = now, UpdatedAt = now },
+            new QuestionBank { Id = Guid.NewGuid(), Text = "¿El dolor irradia?", Section = "ANAMNESIS", Category = "Dolor", Active = true, CreatedAt = now, UpdatedAt = now },
+            new QuestionBank { Id = Guid.NewGuid(), Text = "¿La tos es seca o con flema?", Section = "ANAMNESIS", Category = "Respiratorio", Active = true, CreatedAt = now, UpdatedAt = now }
+        };
 
-        await dbContext.ClinicalCases.AddRangeAsync(clinicalCases, cancellationToken);
+        await dbContext.QuestionBanks.AddRangeAsync(questions, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedFindingBankAsync(ClinicaSimDbContext dbContext, CancellationToken cancellationToken)
+    {
+        if (await dbContext.PhysicalFindingBanks.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var findings = new[]
+        {
+            new PhysicalFindingBank { Id = Guid.NewGuid(), Name = "Murmullo vesicular disminuido", System = "RESPIRATORIO", Active = true, CreatedAt = now, UpdatedAt = now },
+            new PhysicalFindingBank { Id = Guid.NewGuid(), Name = "Sibilancias", System = "RESPIRATORIO", Active = true, CreatedAt = now, UpdatedAt = now },
+            new PhysicalFindingBank { Id = Guid.NewGuid(), Name = "Ruidos cardíacos normales", System = "CARDIOVASCULAR", Active = true, CreatedAt = now, UpdatedAt = now },
+            new PhysicalFindingBank { Id = Guid.NewGuid(), Name = "Abdomen doloroso a la palpación", System = "ABDOMEN", Active = true, CreatedAt = now, UpdatedAt = now },
+            new PhysicalFindingBank { Id = Guid.NewGuid(), Name = "Rigidez de nuca", System = "NEUROLOGICO", Active = true, CreatedAt = now, UpdatedAt = now }
+        };
+
+        await dbContext.PhysicalFindingBanks.AddRangeAsync(findings, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedCaseMappingsAsync(ClinicaSimDbContext dbContext, CancellationToken cancellationToken)
+    {
+        if (await dbContext.CaseQuestionAnswers.AnyAsync(cancellationToken) || await dbContext.CasePhysicalFindings.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var firstCase = await dbContext.ClinicalCases
+            .AsNoTracking()
+            .OrderBy(x => x.FullName)
+            .Select(x => new { x.Id, x.FullName })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (firstCase is null)
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var questionByText = await dbContext.QuestionBanks
+            .AsNoTracking()
+            .ToDictionaryAsync(x => x.Text, x => x.Id, cancellationToken);
+
+        var findingByName = await dbContext.PhysicalFindingBanks
+            .AsNoTracking()
+            .ToDictionaryAsync(x => x.Name, x => x.Id, cancellationToken);
+
+        var caseAnswers = new List<CaseQuestionAnswer>();
+        if (questionByText.TryGetValue("¿Tiene fiebre?", out var feverId))
+        {
+            caseAnswers.Add(new CaseQuestionAnswer
+            {
+                Id = Guid.NewGuid(),
+                CaseId = firstCase.Id,
+                QuestionId = feverId,
+                AnswerText = "No, no he tenido fiebre.",
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        if (questionByText.TryGetValue("¿Está tomando alguna medicación?", out var medicationId))
+        {
+            caseAnswers.Add(new CaseQuestionAnswer
+            {
+                Id = Guid.NewGuid(),
+                CaseId = firstCase.Id,
+                QuestionId = medicationId,
+                AnswerText = "Sí, losartán 50 mg diarios.",
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        var caseFindings = new List<CasePhysicalFinding>();
+        if (findingByName.TryGetValue("Ruidos cardíacos normales", out var cardiacId))
+        {
+            caseFindings.Add(new CasePhysicalFinding
+            {
+                Id = Guid.NewGuid(),
+                CaseId = firstCase.Id,
+                FindingId = cardiacId,
+                Present = true,
+                DetailText = "Ritmo regular sin soplos.",
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        if (findingByName.TryGetValue("Sibilancias", out var wheezingId))
+        {
+            caseFindings.Add(new CasePhysicalFinding
+            {
+                Id = Guid.NewGuid(),
+                CaseId = firstCase.Id,
+                FindingId = wheezingId,
+                Present = false,
+                DetailText = null,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+        }
+
+        if (caseAnswers.Count > 0)
+        {
+            await dbContext.CaseQuestionAnswers.AddRangeAsync(caseAnswers, cancellationToken);
+        }
+
+        if (caseFindings.Count > 0)
+        {
+            await dbContext.CasePhysicalFindings.AddRangeAsync(caseFindings, cancellationToken);
+        }
+
+        if (caseAnswers.Count > 0 || caseFindings.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private static ClinicalCase BuildCase(SeedCaseDefinition definition)
