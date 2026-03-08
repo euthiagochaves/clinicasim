@@ -11,9 +11,11 @@ public class ClinicaSimDbContext(DbContextOptions<ClinicaSimDbContext> options) 
     public DbSet<CaseQuestion> CaseQuestions => Set<CaseQuestion>();
     public DbSet<CaseAnswer> CaseAnswers => Set<CaseAnswer>();
     public DbSet<QuestionBank> QuestionBanks => Set<QuestionBank>();
+    public DbSet<QuestionDefaultAnswer> QuestionDefaultAnswers => Set<QuestionDefaultAnswer>();
     public DbSet<PhysicalFindingBank> PhysicalFindingBanks => Set<PhysicalFindingBank>();
-    public DbSet<CaseQuestionAnswer> CaseQuestionAnswers => Set<CaseQuestionAnswer>();
-    public DbSet<CasePhysicalFinding> CasePhysicalFindings => Set<CasePhysicalFinding>();
+    public DbSet<PhysicalFindingDefault> PhysicalFindingDefaults => Set<PhysicalFindingDefault>();
+    public DbSet<CaseQuestionOverride> CaseQuestionOverrides => Set<CaseQuestionOverride>();
+    public DbSet<CasePhysicalFindingOverride> CasePhysicalFindingOverrides => Set<CasePhysicalFindingOverride>();
     public DbSet<ConsultationSession> ConsultationSessions => Set<ConsultationSession>();
     public DbSet<InteractionEvent> InteractionEvents => Set<InteractionEvent>();
     public DbSet<ClinicalNote> ClinicalNotes => Set<ClinicalNote>();
@@ -41,12 +43,12 @@ public class ClinicaSimDbContext(DbContextOptions<ClinicaSimDbContext> options) 
                 .HasForeignKey(x => x.CaseId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasMany(x => x.QuestionAnswers)
+            entity.HasMany(x => x.QuestionOverrides)
                 .WithOne(x => x.Case)
                 .HasForeignKey(x => x.CaseId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            entity.HasMany(x => x.PhysicalFindings)
+            entity.HasMany(x => x.PhysicalFindingOverrides)
                 .WithOne(x => x.Case)
                 .HasForeignKey(x => x.CaseId)
                 .OnDelete(DeleteBehavior.Cascade);
@@ -126,6 +128,21 @@ public class ClinicaSimDbContext(DbContextOptions<ClinicaSimDbContext> options) 
             entity.HasIndex(x => x.Text);
         });
 
+        modelBuilder.Entity<QuestionDefaultAnswer>(entity =>
+        {
+            entity.ToTable("question_default_answers");
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.QuestionId).HasColumnName("question_id").IsRequired();
+            entity.Property(x => x.AnswerText).HasColumnName("answer_text").IsRequired().HasColumnType("text");
+            entity.Property(x => x.Active).HasColumnName("active").HasDefaultValue(true).IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
+
+            entity.HasIndex(x => x.QuestionId).IsUnique();
+        });
+
         modelBuilder.Entity<PhysicalFindingBank>(entity =>
         {
             entity.ToTable("physical_finding_bank");
@@ -142,24 +159,42 @@ public class ClinicaSimDbContext(DbContextOptions<ClinicaSimDbContext> options) 
             entity.HasIndex(x => new { x.System, x.Name });
         });
 
-        modelBuilder.Entity<CaseQuestionAnswer>(entity =>
+        modelBuilder.Entity<PhysicalFindingDefault>(entity =>
         {
-            entity.ToTable("case_question_answers");
+            entity.ToTable("physical_finding_defaults");
+            entity.HasKey(x => x.Id);
+
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.FindingId).HasColumnName("finding_id").IsRequired();
+            entity.Property(x => x.Present).HasColumnName("present").IsRequired();
+            entity.Property(x => x.DetailText).HasColumnName("detail_text").HasColumnType("text");
+            entity.Property(x => x.Active).HasColumnName("active").HasDefaultValue(true).IsRequired();
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
+            entity.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
+
+            entity.HasIndex(x => x.FindingId).IsUnique();
+        });
+
+        modelBuilder.Entity<CaseQuestionOverride>(entity =>
+        {
+            entity.ToTable("case_question_overrides");
             entity.HasKey(x => x.Id);
 
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.CaseId).HasColumnName("case_id").IsRequired();
             entity.Property(x => x.QuestionId).HasColumnName("question_id").IsRequired();
             entity.Property(x => x.AnswerText).HasColumnName("answer_text").IsRequired().HasColumnType("text");
+            entity.Property(x => x.IsCaseSpecific).HasColumnName("is_case_specific").HasDefaultValue(true).IsRequired();
+            entity.Property(x => x.IsHighlighted).HasColumnName("is_highlighted").HasDefaultValue(false).IsRequired();
             entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
 
             entity.HasIndex(x => new { x.CaseId, x.QuestionId }).IsUnique();
         });
 
-        modelBuilder.Entity<CasePhysicalFinding>(entity =>
+        modelBuilder.Entity<CasePhysicalFindingOverride>(entity =>
         {
-            entity.ToTable("case_physical_findings");
+            entity.ToTable("case_physical_finding_overrides");
             entity.HasKey(x => x.Id);
 
             entity.Property(x => x.Id).HasColumnName("id");
@@ -167,6 +202,8 @@ public class ClinicaSimDbContext(DbContextOptions<ClinicaSimDbContext> options) 
             entity.Property(x => x.FindingId).HasColumnName("finding_id").IsRequired();
             entity.Property(x => x.Present).HasColumnName("present").IsRequired();
             entity.Property(x => x.DetailText).HasColumnName("detail_text").HasColumnType("text");
+            entity.Property(x => x.IsCaseSpecific).HasColumnName("is_case_specific").HasDefaultValue(true).IsRequired();
+            entity.Property(x => x.IsHighlighted).HasColumnName("is_highlighted").HasDefaultValue(false).IsRequired();
             entity.Property(x => x.CreatedAt).HasColumnName("created_at").IsRequired();
             entity.Property(x => x.UpdatedAt).HasColumnName("updated_at").IsRequired();
 

@@ -10,10 +10,10 @@ import { CaseAnswerMapping, QuestionAdminItem } from '../../models/admin.models'
   standalone: true,
   imports: [NgFor, NgIf, FormsModule],
   template: `
-    <h4>Respuestas por preguntas</h4>
+    <h4>Respuestas del caso</h4>
 
     <div class="card">
-      <h5>{{ editingId ? 'Editar respuesta' : 'Agregar respuesta' }}</h5>
+      <h5>{{ editingId ? 'Editar sobrescritura' : 'Crear sobrescritura' }}</h5>
       <label>Pregunta</label>
       <select [(ngModel)]="form.questionId">
         <option [ngValue]="''">Seleccione</option>
@@ -21,6 +21,8 @@ import { CaseAnswerMapping, QuestionAdminItem } from '../../models/admin.models'
       </select>
       <label>Respuesta</label>
       <input [(ngModel)]="form.answerText" />
+      <label><input type="checkbox" [(ngModel)]="form.isCaseSpecific" /> Específica del caso</label>
+      <label><input type="checkbox" [(ngModel)]="form.isHighlighted" /> Destacada</label>
       <div class="row">
         <button (click)="save()">Guardar</button>
         <button type="button" (click)="resetForm()">Cancelar</button>
@@ -28,20 +30,34 @@ import { CaseAnswerMapping, QuestionAdminItem } from '../../models/admin.models'
       <p *ngIf="error" class="error">{{ error }}</p>
     </div>
 
-    <table *ngIf="items.length > 0">
+    <h5>Heredadas del sistema</h5>
+    <table *ngIf="inheritedItems.length > 0">
+      <thead><tr><th>Pregunta</th><th>Sección</th><th>Categoría</th><th>Respuesta</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let item of inheritedItems">
+          <td>{{ item.questionText }}</td><td>{{ item.section }}</td><td>{{ item.category }}</td><td>{{ item.answerText }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h5>Alteradas del caso</h5>
+    <table *ngIf="overriddenItems.length > 0">
       <thead><tr><th>Pregunta</th><th>Sección</th><th>Categoría</th><th>Respuesta</th><th>Acciones</th></tr></thead>
       <tbody>
-        <tr *ngFor="let item of items">
-          <td>{{ item.questionText }}</td>
-          <td>{{ item.section }}</td>
-          <td>{{ item.category }}</td>
-          <td>{{ item.answerText }}</td>
+        <tr *ngFor="let item of overriddenItems">
+          <td>{{ item.questionText }}</td><td>{{ item.section }}</td><td>{{ item.category }}</td><td>{{ item.answerText }}</td>
           <td>
             <button (click)="edit(item)">Editar</button>
-            <button (click)="remove(item.id)">Eliminar</button>
+            <button (click)="remove(item.overrideId)">Quitar override</button>
           </td>
         </tr>
       </tbody>
+    </table>
+
+    <h5>Destacadas / relevantes</h5>
+    <table *ngIf="highlightedItems.length > 0">
+      <thead><tr><th>Pregunta</th><th>Respuesta</th></tr></thead>
+      <tbody><tr *ngFor="let item of highlightedItems"><td>{{ item.questionText }}</td><td>{{ item.answerText }}</td></tr></tbody>
     </table>
   `
 })
@@ -52,17 +68,18 @@ export class AdminCaseAnswersComponent implements OnInit {
   questions: QuestionAdminItem[] = [];
   editingId: string | null = null;
   error = '';
-  form = { questionId: '', answerText: '' };
+  form = { questionId: '', answerText: '', isCaseSpecific: true, isHighlighted: false };
 
   constructor(
     private readonly adminCaseService: AdminCaseService,
     private readonly adminQuestionService: AdminQuestionService
   ) {}
 
-  ngOnInit(): void {
-    this.loadQuestions();
-    this.load();
-  }
+  get inheritedItems(): CaseAnswerMapping[] { return this.items.filter(x => x.isInherited); }
+  get overriddenItems(): CaseAnswerMapping[] { return this.items.filter(x => !x.isInherited); }
+  get highlightedItems(): CaseAnswerMapping[] { return this.items.filter(x => x.isHighlighted); }
+
+  ngOnInit(): void { this.loadQuestions(); this.load(); }
 
   load(): void {
     this.adminCaseService.getCaseAnswers(this.caseId).subscribe({ next: x => this.items = x });
@@ -84,25 +101,29 @@ export class AdminCaseAnswersComponent implements OnInit {
       : this.adminCaseService.addCaseAnswer(this.caseId, { ...this.form });
 
     req$.subscribe({
-      next: () => {
-        this.resetForm();
-        this.load();
-      },
-      error: () => this.error = 'No se pudo guardar el mapeo.'
+      next: () => { this.resetForm(); this.load(); },
+      error: () => this.error = 'No se pudo guardar la sobrescritura.'
     });
   }
 
   edit(item: CaseAnswerMapping): void {
-    this.editingId = item.id;
-    this.form = { questionId: item.questionId, answerText: item.answerText };
+    if (!item.overrideId) return;
+    this.editingId = item.overrideId;
+    this.form = {
+      questionId: item.questionId,
+      answerText: item.answerText,
+      isCaseSpecific: item.isCaseSpecific,
+      isHighlighted: item.isHighlighted
+    };
   }
 
-  remove(mappingId: string): void {
-    this.adminCaseService.deleteCaseAnswer(this.caseId, mappingId).subscribe({ next: () => this.load() });
+  remove(overrideId: string | null): void {
+    if (!overrideId) return;
+    this.adminCaseService.deleteCaseAnswer(this.caseId, overrideId).subscribe({ next: () => this.load() });
   }
 
   resetForm(): void {
     this.editingId = null;
-    this.form = { questionId: '', answerText: '' };
+    this.form = { questionId: '', answerText: '', isCaseSpecific: true, isHighlighted: false };
   }
 }

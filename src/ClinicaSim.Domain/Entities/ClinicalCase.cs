@@ -12,6 +12,6 @@ public class ClinicalCase
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public ICollection<CaseSection> Sections { get; set; } = new List<CaseSection>();
-    public ICollection<CaseQuestionAnswer> QuestionAnswers { get; set; } = new List<CaseQuestionAnswer>();
-    public ICollection<CasePhysicalFinding> PhysicalFindings { get; set; } = new List<CasePhysicalFinding>();
+    public ICollection<CaseQuestionOverride> QuestionOverrides { get; set; } = new List<CaseQuestionOverride>();
+    public ICollection<CasePhysicalFindingOverride> PhysicalFindingOverrides { get; set; } = new List<CasePhysicalFindingOverride>();
 }

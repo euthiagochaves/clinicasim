@@ -19,6 +19,8 @@ public static class DbSeeder
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
+        await SeedQuestionDefaultsAsync(dbContext, cancellationToken);
+        await SeedFindingDefaultsAsync(dbContext, cancellationToken);
         await SeedCaseMappingsAsync(dbContext, cancellationToken);
     }
 
@@ -67,9 +69,60 @@ public static class DbSeeder
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private static async Task SeedQuestionDefaultsAsync(ClinicaSimDbContext dbContext, CancellationToken cancellationToken)
+    {
+        if (await dbContext.QuestionDefaultAnswers.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var defaults = await dbContext.QuestionBanks
+            .AsNoTracking()
+            .Select(x => new QuestionDefaultAnswer
+            {
+                Id = Guid.NewGuid(),
+                QuestionId = x.Id,
+                AnswerText = "No tengo ese dato.",
+                Active = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            })
+            .ToListAsync(cancellationToken);
+
+        await dbContext.QuestionDefaultAnswers.AddRangeAsync(defaults, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static async Task SeedFindingDefaultsAsync(ClinicaSimDbContext dbContext, CancellationToken cancellationToken)
+    {
+        if (await dbContext.PhysicalFindingDefaults.AnyAsync(cancellationToken))
+        {
+            return;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var defaults = await dbContext.PhysicalFindingBanks
+            .AsNoTracking()
+            .Select(x => new PhysicalFindingDefault
+            {
+                Id = Guid.NewGuid(),
+                FindingId = x.Id,
+                Present = false,
+                DetailText = null,
+                Active = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            })
+            .ToListAsync(cancellationToken);
+
+        await dbContext.PhysicalFindingDefaults.AddRangeAsync(defaults, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private static async Task SeedCaseMappingsAsync(ClinicaSimDbContext dbContext, CancellationToken cancellationToken)
     {
-        if (await dbContext.CaseQuestionAnswers.AnyAsync(cancellationToken) || await dbContext.CasePhysicalFindings.AnyAsync(cancellationToken))
+        if (await dbContext.CaseQuestionOverrides.AnyAsync(cancellationToken) || await dbContext.CasePhysicalFindingOverrides.AnyAsync(cancellationToken))
         {
             return;
         }
@@ -94,10 +147,10 @@ public static class DbSeeder
             .AsNoTracking()
             .ToDictionaryAsync(x => x.Name, x => x.Id, cancellationToken);
 
-        var caseAnswers = new List<CaseQuestionAnswer>();
+        var caseAnswers = new List<CaseQuestionOverride>();
         if (questionByText.TryGetValue("¿Tiene fiebre?", out var feverId))
         {
-            caseAnswers.Add(new CaseQuestionAnswer
+            caseAnswers.Add(new CaseQuestionOverride
             {
                 Id = Guid.NewGuid(),
                 CaseId = firstCase.Id,
@@ -110,7 +163,7 @@ public static class DbSeeder
 
         if (questionByText.TryGetValue("¿Está tomando alguna medicación?", out var medicationId))
         {
-            caseAnswers.Add(new CaseQuestionAnswer
+            caseAnswers.Add(new CaseQuestionOverride
             {
                 Id = Guid.NewGuid(),
                 CaseId = firstCase.Id,
@@ -121,10 +174,10 @@ public static class DbSeeder
             });
         }
 
-        var caseFindings = new List<CasePhysicalFinding>();
+        var caseFindings = new List<CasePhysicalFindingOverride>();
         if (findingByName.TryGetValue("Ruidos cardíacos normales", out var cardiacId))
         {
-            caseFindings.Add(new CasePhysicalFinding
+            caseFindings.Add(new CasePhysicalFindingOverride
             {
                 Id = Guid.NewGuid(),
                 CaseId = firstCase.Id,
@@ -138,7 +191,7 @@ public static class DbSeeder
 
         if (findingByName.TryGetValue("Sibilancias", out var wheezingId))
         {
-            caseFindings.Add(new CasePhysicalFinding
+            caseFindings.Add(new CasePhysicalFindingOverride
             {
                 Id = Guid.NewGuid(),
                 CaseId = firstCase.Id,
@@ -152,12 +205,12 @@ public static class DbSeeder
 
         if (caseAnswers.Count > 0)
         {
-            await dbContext.CaseQuestionAnswers.AddRangeAsync(caseAnswers, cancellationToken);
+            await dbContext.CaseQuestionOverrides.AddRangeAsync(caseAnswers, cancellationToken);
         }
 
         if (caseFindings.Count > 0)
         {
-            await dbContext.CasePhysicalFindings.AddRangeAsync(caseFindings, cancellationToken);
+            await dbContext.CasePhysicalFindingOverrides.AddRangeAsync(caseFindings, cancellationToken);
         }
 
         if (caseAnswers.Count > 0 || caseFindings.Count > 0)

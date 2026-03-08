@@ -104,7 +104,7 @@ public class AdminCasesController(IAdminCaseService adminCaseService) : Controll
         try
         {
             var items = await adminCaseService.GetAnswersAsync(caseId, cancellationToken);
-            return Ok(items.Select(x => new CaseQuestionAnswerDto(x.Id, x.CaseId, x.QuestionId, x.QuestionText, x.Section, x.Category, x.AnswerText)).ToList());
+            return Ok(items.Select(x => new CaseQuestionAnswerDto(x.OverrideId, x.CaseId, x.QuestionId, x.QuestionText, x.Section, x.Category, x.AnswerText, x.IsInherited, x.IsCaseSpecific, x.IsHighlighted)).ToList());
         }
         catch (AppException ex)
         {
@@ -117,8 +117,8 @@ public class AdminCasesController(IAdminCaseService adminCaseService) : Controll
     {
         try
         {
-            var item = await adminCaseService.AddAnswerAsync(caseId, new CreateCaseQuestionAnswerCommand(request.QuestionId, request.AnswerText), cancellationToken);
-            return Ok(new CaseQuestionAnswerDto(item.Id, item.CaseId, item.QuestionId, item.QuestionText, item.Section, item.Category, item.AnswerText));
+            var item = await adminCaseService.AddAnswerAsync(caseId, new CreateCaseQuestionAnswerCommand(request.QuestionId, request.AnswerText, request.IsCaseSpecific, request.IsHighlighted), cancellationToken);
+            return Ok(new CaseQuestionAnswerDto(item.OverrideId, item.CaseId, item.QuestionId, item.QuestionText, item.Section, item.Category, item.AnswerText, item.IsInherited, item.IsCaseSpecific, item.IsHighlighted));
         }
         catch (AppException ex)
         {
@@ -131,8 +131,8 @@ public class AdminCasesController(IAdminCaseService adminCaseService) : Controll
     {
         try
         {
-            var item = await adminCaseService.UpdateAnswerAsync(caseId, mappingId, new UpdateCaseQuestionAnswerCommand(request.QuestionId, request.AnswerText), cancellationToken);
-            return Ok(new CaseQuestionAnswerDto(item.Id, item.CaseId, item.QuestionId, item.QuestionText, item.Section, item.Category, item.AnswerText));
+            var item = await adminCaseService.UpdateAnswerAsync(caseId, mappingId, new UpdateCaseQuestionAnswerCommand(request.QuestionId, request.AnswerText, request.IsCaseSpecific, request.IsHighlighted), cancellationToken);
+            return Ok(new CaseQuestionAnswerDto(item.OverrideId, item.CaseId, item.QuestionId, item.QuestionText, item.Section, item.Category, item.AnswerText, item.IsInherited, item.IsCaseSpecific, item.IsHighlighted));
         }
         catch (AppException ex)
         {
@@ -160,7 +160,7 @@ public class AdminCasesController(IAdminCaseService adminCaseService) : Controll
         try
         {
             var items = await adminCaseService.GetFindingsAsync(caseId, cancellationToken);
-            return Ok(items.Select(x => new CasePhysicalFindingDto(x.Id, x.CaseId, x.FindingId, x.FindingName, x.System, x.Present, x.DetailText)).ToList());
+            return Ok(items.Select(x => new CasePhysicalFindingDto(x.OverrideId, x.CaseId, x.FindingId, x.FindingName, x.System, x.Present, x.DetailText, x.IsInherited, x.IsCaseSpecific, x.IsHighlighted)).ToList());
         }
         catch (AppException ex)
         {
@@ -173,8 +173,8 @@ public class AdminCasesController(IAdminCaseService adminCaseService) : Controll
     {
         try
         {
-            var item = await adminCaseService.AddFindingAsync(caseId, new CreateCasePhysicalFindingCommand(request.FindingId, request.Present, request.DetailText), cancellationToken);
-            return Ok(new CasePhysicalFindingDto(item.Id, item.CaseId, item.FindingId, item.FindingName, item.System, item.Present, item.DetailText));
+            var item = await adminCaseService.AddFindingAsync(caseId, new CreateCasePhysicalFindingCommand(request.FindingId, request.Present, request.DetailText, request.IsCaseSpecific, request.IsHighlighted), cancellationToken);
+            return Ok(new CasePhysicalFindingDto(item.OverrideId, item.CaseId, item.FindingId, item.FindingName, item.System, item.Present, item.DetailText, item.IsInherited, item.IsCaseSpecific, item.IsHighlighted));
         }
         catch (AppException ex)
         {
@@ -187,8 +187,8 @@ public class AdminCasesController(IAdminCaseService adminCaseService) : Controll
     {
         try
         {
-            var item = await adminCaseService.UpdateFindingAsync(caseId, mappingId, new UpdateCasePhysicalFindingCommand(request.FindingId, request.Present, request.DetailText), cancellationToken);
-            return Ok(new CasePhysicalFindingDto(item.Id, item.CaseId, item.FindingId, item.FindingName, item.System, item.Present, item.DetailText));
+            var item = await adminCaseService.UpdateFindingAsync(caseId, mappingId, new UpdateCasePhysicalFindingCommand(request.FindingId, request.Present, request.DetailText, request.IsCaseSpecific, request.IsHighlighted), cancellationToken);
+            return Ok(new CasePhysicalFindingDto(item.OverrideId, item.CaseId, item.FindingId, item.FindingName, item.System, item.Present, item.DetailText, item.IsInherited, item.IsCaseSpecific, item.IsHighlighted));
         }
         catch (AppException ex)
         {

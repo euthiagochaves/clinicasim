@@ -85,36 +85,46 @@ export interface UpdateCasePayload extends CreateCasePayload {
 }
 
 export interface CaseAnswerMapping {
-  id: string;
+  overrideId: string | null;
   caseId: string;
   questionId: string;
   questionText: string;
   section: string;
   category: string;
   answerText: string;
+  isInherited: boolean;
+  isCaseSpecific: boolean;
+  isHighlighted: boolean;
 }
 
 export interface CreateCaseAnswerPayload {
   questionId: string;
   answerText: string;
+  isCaseSpecific: boolean;
+  isHighlighted: boolean;
 }
 
 export interface UpdateCaseAnswerPayload extends CreateCaseAnswerPayload {}
 
 export interface CaseFindingMapping {
-  id: string;
+  overrideId: string | null;
   caseId: string;
   findingId: string;
   findingName: string;
   system: string;
   present: boolean;
   detailText: string | null;
+  isInherited: boolean;
+  isCaseSpecific: boolean;
+  isHighlighted: boolean;
 }
 
 export interface CreateCaseFindingPayload {
   findingId: string;
   present: boolean;
   detailText?: string | null;
+  isCaseSpecific: boolean;
+  isHighlighted: boolean;
 }
 
 export interface UpdateCaseFindingPayload extends CreateCaseFindingPayload {}

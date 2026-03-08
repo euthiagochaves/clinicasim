@@ -13,7 +13,7 @@ public class CaseMappingsController(ICaseMappingService caseMappingService) : Co
     public async Task<ActionResult<IReadOnlyCollection<CaseQuestionAnswerItemDto>>> GetCaseAnswers(Guid caseId, CancellationToken cancellationToken)
     {
         var items = await caseMappingService.GetCaseAnswersAsync(caseId, cancellationToken);
-        return Ok(items.Select(x => new CaseQuestionAnswerItemDto(x.Id, x.QuestionId, x.QuestionText, x.AnswerText)).ToList());
+        return Ok(items.Select(x => new CaseQuestionAnswerItemDto(x.OverrideId, x.QuestionId, x.QuestionText, x.AnswerText, x.IsInherited, x.IsCaseSpecific, x.IsHighlighted)).ToList());
     }
 
     [HttpGet("findings")]
@@ -21,7 +21,7 @@ public class CaseMappingsController(ICaseMappingService caseMappingService) : Co
     public async Task<ActionResult<IReadOnlyCollection<CasePhysicalFindingItemDto>>> GetCaseFindings(Guid caseId, CancellationToken cancellationToken)
     {
         var items = await caseMappingService.GetCaseFindingsAsync(caseId, cancellationToken);
-        return Ok(items.Select(x => new CasePhysicalFindingItemDto(x.Id, x.FindingId, x.FindingName, x.System, x.Present, x.DetailText)).ToList());
+        return Ok(items.Select(x => new CasePhysicalFindingItemDto(x.OverrideId, x.FindingId, x.FindingName, x.System, x.Present, x.DetailText, x.IsInherited, x.IsCaseSpecific, x.IsHighlighted)).ToList());
     }
 
     [HttpGet("resolve-question/{questionId:guid}")]
