@@ -485,8 +485,25 @@ export class SessionComponent implements OnInit, OnDestroy {
     this.loadingQuestions = true;
     this.apiClient.getQuestions('ANAMNESIS').subscribe({
       next: (items) => {
-        this.anamnesisQuestions = [...items].sort((a, b) => a.text.localeCompare(b.text));
-        this.loadingQuestions = false;
+        if (items.length > 0) {
+          this.anamnesisQuestions = [...items].sort((a, b) => a.text.localeCompare(b.text));
+          this.loadingQuestions = false;
+          return;
+        }
+
+        // Fallback for legacy/custom section casing used by existing data.
+        this.apiClient.getQuestions().subscribe({
+          next: (allItems) => {
+            this.anamnesisQuestions = allItems
+              .filter((x) => (x.section ?? '').toLowerCase().includes('anamnesis'))
+              .sort((a, b) => a.text.localeCompare(b.text));
+            this.loadingQuestions = false;
+          },
+          error: () => {
+            this.anamnesisQuestions = [];
+            this.loadingQuestions = false;
+          }
+        });
       },
       error: () => {
         this.anamnesisQuestions = [];
