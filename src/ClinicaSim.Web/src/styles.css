@@ -1,0 +1,15 @@
+body { font-family: Arial, sans-serif; margin: 0; }
+.container { max-width: 900px; margin: 0 auto; padding: 16px; }
+nav a { margin-right: 12px; }
+.error { color: #b00020; }
+button { padding: 8px 12px; }
+input { padding: 8px; }
+
+
+.success { color: #1b7f3a; }
+.toolbar, .filters, .row { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+.card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 12px 0; display: grid; gap: 8px; }
+.admin-menu { display: flex; gap: 12px; margin-top: 12px; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+th { background-color: #f6f6f6; }

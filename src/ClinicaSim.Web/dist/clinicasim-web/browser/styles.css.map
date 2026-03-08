@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["src/styles.css"],
+  "sourcesContent": ["body { font-family: Arial, sans-serif; margin: 0; }\r\n.container { max-width: 900px; margin: 0 auto; padding: 16px; }\r\nnav a { margin-right: 12px; }\r\n.error { color: #b00020; }\r\nbutton { padding: 8px 12px; }\r\ninput { padding: 8px; }\r\n\r\n\r\n.success { color: #1b7f3a; }\r\n.toolbar, .filters, .row { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }\r\n.card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; margin: 12px 0; display: grid; gap: 8px; }\r\n.admin-menu { display: flex; gap: 12px; margin-top: 12px; }\r\ntable { width: 100%; border-collapse: collapse; }\r\nth, td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }\r\nth { background-color: #f6f6f6; }\r\n"],
+  "mappings": ";AAAA;AAAO,eAAa,KAAK,EAAE;AAAY,UAAQ;AAAG;AAClD,CAAC;AAAY,aAAW;AAAO,UAAQ,EAAE;AAAM,WAAS;AAAM;AAC9D,IAAI;AAAI,gBAAc;AAAM;AAC5B,CAAC;AAAQ,SAAO;AAAS;AACzB;AAAS,WAAS,IAAI;AAAM;AAC5B;AAAQ,WAAS;AAAK;AAGtB,CAAC;AAAU,SAAO;AAAS;AAC3B,CAAC;AAAS,CAAC;AAAS,CAAC;AAAM,WAAS;AAAM,OAAK;AAAK,UAAQ,KAAK;AAAG,aAAW;AAAM;AACrF,CAAC;AAAO,UAAQ,IAAI,MAAM;AAAM,iBAAe;AAAK,WAAS;AAAM,UAAQ,KAAK;AAAG,WAAS;AAAM,OAAK;AAAK;AAC5G,CAAC;AAAa,WAAS;AAAM,OAAK;AAAM,cAAY;AAAM;AAC1D;AAAQ,SAAO;AAAM,mBAAiB;AAAU;AAChD;AAAI;AAAK,UAAQ,IAAI,MAAM;AAAM,WAAS;AAAK,cAAY;AAAM,kBAAgB;AAAK;AACtF;AAAK,oBAAkB;AAAS;",
+  "names": []
+}
