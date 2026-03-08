@@ -70,9 +70,9 @@ interface FeedItem {
     <div class="layout" *ngIf="!loadError">
       <div class="left panel">
         <div class="tabs">
-          <button (click)="activeTab = 'anamnesis'">Anamnesis</button>
-          <button (click)="activeTab = 'examen'">Examen Físico</button>
-          <button (click)="activeTab = 'historia'">Historia Clínica</button>
+          <button (click)="setActiveTab('anamnesis')">Anamnesis</button>
+          <button (click)="setActiveTab('examen')">Examen Físico</button>
+          <button (click)="setActiveTab('historia')">Historia Clínica</button>
         </div>
 
         <ng-container *ngIf="activeTab !== 'historia'; else historiaTpl">
@@ -299,6 +299,18 @@ export class SessionComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.routeSub?.unsubscribe();
     this.clearTimer();
+  }
+
+  setActiveTab(tab: SectionTab): void {
+    this.activeTab = tab;
+
+    if (tab === 'anamnesis' && this.anamnesisQuestions.length === 0 && !this.loadingQuestions) {
+      this.loadAnamnesisQuestions();
+    }
+
+    if (tab === 'examen' && this.findings.length === 0 && !this.loadingFindings) {
+      this.loadFindings();
+    }
   }
 
   onQuestionClick(question: QuestionDto | SessionQuestionDto): void {
