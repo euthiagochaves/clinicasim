@@ -10,6 +10,8 @@ import { SessionStateService } from '../../core/services/session-state.service';
 import {
   ClinicalNoteRequest,
   DifferentialItemDto,
+  FindingDto,
+  QuestionDto,
   SaveDifferentialsRequest,
   SessionInfoResponse,
   SessionQuestionDto,
@@ -20,8 +22,10 @@ import {
 type SectionTab = 'anamnesis' | 'examen' | 'historia';
 
 interface FeedItem {
-  questionText: string;
+  title: string;
+  answerLabel: string;
   answerText: string;
+  detailText?: string | null;
 }
 
 @Component({
@@ -45,6 +49,9 @@ interface FeedItem {
       .ddx-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
       .ddx-row input { flex: 1; }
       .drag-handle { cursor: move; padding: 0 6px; border: 1px solid #ccc; border-radius: 4px; }
+      .list-box { max-height: 50vh; overflow: auto; border: 1px solid #eee; padding: 8px; border-radius: 4px; }
+      .system-group { margin-bottom: 10px; }
+      .system-group h5 { margin: 6px 0; }
     `
   ],
   template: `
@@ -69,17 +76,38 @@ interface FeedItem {
         </div>
 
         <ng-container *ngIf="activeTab !== 'historia'; else historiaTpl">
-          <ng-container *ngIf="activeSection as section; else noSectionTpl">
-            <div class="category" *ngFor="let category of section.categories">
-              <strong>{{ category.name }}</strong>
+          <ng-container *ngIf="activeTab === 'anamnesis'">
+            <h4>Preguntas de anamnesis</h4>
+            <p *ngIf="loadingQuestions">Cargando preguntas...</p>
+            <p *ngIf="!loadingQuestions && anamnesisQuestions.length === 0">No se encontraron preguntas.</p>
+            <div class="list-box" *ngIf="anamnesisQuestions.length > 0">
               <button
                 class="question"
-                *ngFor="let question of category.questions"
+                *ngFor="let question of anamnesisQuestions"
                 (click)="onQuestionClick(question)"
-                [disabled]="isFinalized || loadingQuestionId === question.questionId"
+                [disabled]="isFinalized || loadingQuestionId === question.id"
               >
-                {{ loadingQuestionId === question.questionId ? 'Enviando...' : question.text }}
+                {{ loadingQuestionId === question.id ? 'Enviando...' : question.text }}
               </button>
+            </div>
+          </ng-container>
+
+          <ng-container *ngIf="activeTab === 'examen'">
+            <h4>Examen físico por sistema</h4>
+            <p *ngIf="loadingFindings">Cargando hallazgos...</p>
+            <p *ngIf="!loadingFindings && groupedFindings.length === 0">No se encontraron hallazgos.</p>
+            <div class="list-box" *ngIf="groupedFindings.length > 0">
+              <div class="system-group" *ngFor="let group of groupedFindings">
+                <h5>{{ group.system }}</h5>
+                <button
+                  class="question"
+                  *ngFor="let finding of group.items"
+                  (click)="onFindingClick(finding)"
+                  [disabled]="isFinalized || loadingFindingId === finding.id"
+                >
+                  {{ loadingFindingId === finding.id ? 'Consultando...' : finding.name }}
+                </button>
+              </div>
             </div>
           </ng-container>
         </ng-container>
@@ -140,10 +168,6 @@ interface FeedItem {
             <li *ngFor="let err of backendErrors">{{ err }}</li>
           </ul>
         </ng-template>
-
-        <ng-template #noSectionTpl>
-          <p>No hay datos para esta sección.</p>
-        </ng-template>
       </div>
 
       <div class="center panel">
@@ -151,8 +175,9 @@ interface FeedItem {
         <p *ngIf="feedItems.length === 0">Sin interacciones recientes.</p>
 
         <div class="feed-item" *ngFor="let item of feedItems">
-          <div><strong>Médico:</strong> {{ item.questionText }}</div>
-          <div><strong>Paciente:</strong> {{ item.answerText }}</div>
+          <div><strong>{{ item.title }}</strong></div>
+          <div><strong>{{ item.answerLabel }}</strong> {{ item.answerText }}</div>
+          <div *ngIf="item.detailText"><strong>Detalle:</strong> {{ item.detailText }}</div>
         </div>
       </div>
 
@@ -167,8 +192,6 @@ interface FeedItem {
         </ng-container>
       </div>
     </div>
-
-    <p style="margin-top: 12px;">Pantalla de atención se implementa en Tarea 7/8.</p>
   `
 })
 export class SessionComponent implements OnInit, OnDestroy {
@@ -183,6 +206,12 @@ export class SessionComponent implements OnInit, OnDestroy {
   activeTab: SectionTab = 'anamnesis';
   feedItems: FeedItem[] = [];
   loadingQuestionId: string | null = null;
+  loadingFindingId: string | null = null;
+
+  anamnesisQuestions: QuestionDto[] = [];
+  findings: FindingDto[] = [];
+  loadingQuestions = false;
+  loadingFindings = false;
 
   isSavingDraft = false;
   isFinalizing = false;
@@ -225,10 +254,30 @@ export class SessionComponent implements OnInit, OnDestroy {
     return this.sessionData.sections.find((s) => s.name.toLowerCase().includes(target)) ?? null;
   }
 
+  get groupedFindings(): Array<{ system: string; items: FindingDto[] }> {
+    const grouped = new Map<string, FindingDto[]>();
+
+    for (const finding of this.findings) {
+      const key = finding.system?.trim() || 'OTROS';
+      const current = grouped.get(key) ?? [];
+      current.push(finding);
+      grouped.set(key, current);
+    }
+
+    return Array.from(grouped.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([system, items]) => ({
+        system,
+        items: [...items].sort((a, b) => a.name.localeCompare(b.name))
+      }));
+  }
+
   ngOnInit(): void {
     this.routeSub = this.route.paramMap.subscribe((params) => {
       this.sessionCode = params.get('sessionCode') ?? '';
       this.feedItems = [];
+      this.anamnesisQuestions = [];
+      this.findings = [];
       this.clearTimer();
       this.backendErrors = [];
       this.localErrors = [];
@@ -242,6 +291,8 @@ export class SessionComponent implements OnInit, OnDestroy {
       this.loadFromState();
       this.loadSessionStatus();
       this.loadHistoryData();
+      this.loadAnamnesisQuestions();
+      this.loadFindings();
     });
   }
 
@@ -250,13 +301,20 @@ export class SessionComponent implements OnInit, OnDestroy {
     this.clearTimer();
   }
 
-  onQuestionClick(question: SessionQuestionDto): void {
+  onQuestionClick(question: QuestionDto | SessionQuestionDto): void {
     if (this.isFinalized || !this.sessionCode) return;
 
-    this.loadingQuestionId = question.questionId;
-    this.apiClient.postEvent(this.sessionCode, { questionId: question.questionId }).subscribe({
+    const questionId = 'id' in question ? question.id : question.questionId;
+    const questionText = question.text;
+
+    this.loadingQuestionId = questionId;
+    this.apiClient.postEvent(this.sessionCode, { questionId }).subscribe({
       next: (response) => {
-        this.feedItems.push({ questionText: response.questionText, answerText: response.answerText });
+        this.feedItems.push({
+          title: `Médico: ${response.questionText || questionText}`,
+          answerLabel: 'Paciente:',
+          answerText: response.answerText
+        });
         this.loadingQuestionId = null;
         this.resetClearTimer();
       },
@@ -265,6 +323,28 @@ export class SessionComponent implements OnInit, OnDestroy {
         if (error?.status === 409) {
           this.setFinalizedState();
         }
+      }
+    });
+  }
+
+  onFindingClick(finding: FindingDto): void {
+    const caseId = this.sessionInfo?.case.caseId;
+    if (this.isFinalized || !caseId) return;
+
+    this.loadingFindingId = finding.id;
+    this.apiClient.resolveFinding(caseId, finding.id).subscribe({
+      next: (resolved) => {
+        this.feedItems.push({
+          title: `Examen físico: ${finding.name}`,
+          answerLabel: 'Resultado:',
+          answerText: resolved.present ? 'Presente' : 'Ausente',
+          detailText: resolved.detailText
+        });
+        this.loadingFindingId = null;
+        this.resetClearTimer();
+      },
+      error: () => {
+        this.loadingFindingId = null;
       }
     });
   }
@@ -385,6 +465,34 @@ export class SessionComponent implements OnInit, OnDestroy {
         if (error.status === 404) this.backendErrors = ['Código no encontrado.'];
         else if (error.status === 409) this.backendErrors = ['La sesión no está finalizada.'];
         else this.backendErrors = ['Error al descargar el PDF.'];
+      }
+    });
+  }
+
+  private loadAnamnesisQuestions(): void {
+    this.loadingQuestions = true;
+    this.apiClient.getQuestions('ANAMNESIS').subscribe({
+      next: (items) => {
+        this.anamnesisQuestions = [...items].sort((a, b) => a.text.localeCompare(b.text));
+        this.loadingQuestions = false;
+      },
+      error: () => {
+        this.anamnesisQuestions = [];
+        this.loadingQuestions = false;
+      }
+    });
+  }
+
+  private loadFindings(): void {
+    this.loadingFindings = true;
+    this.apiClient.getFindings().subscribe({
+      next: (items) => {
+        this.findings = items;
+        this.loadingFindings = false;
+      },
+      error: () => {
+        this.findings = [];
+        this.loadingFindings = false;
       }
     });
   }
