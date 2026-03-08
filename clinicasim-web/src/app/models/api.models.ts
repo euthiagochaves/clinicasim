@@ -34,6 +34,23 @@ export interface SessionQuestionDto {
   text: string;
 }
 
+export interface QuestionDto {
+  id: string;
+  text: string;
+  section: string;
+  category: string;
+  tags: string | null;
+  active: boolean;
+}
+
+export interface FindingDto {
+  id: string;
+  name: string;
+  system: string;
+  tags: string | null;
+  active: boolean;
+}
+
 export interface PostEventRequest { questionId: string; }
 
 export interface PostEventResponse {
@@ -43,6 +60,19 @@ export interface PostEventResponse {
   categoryName: string;
   questionText: string;
   answerText: string;
+}
+
+export interface ResolvedQuestionAnswerDto {
+  caseId: string;
+  questionId: string;
+  answerText: string;
+}
+
+export interface ResolvedFindingDto {
+  caseId: string;
+  findingId: string;
+  present: boolean;
+  detailText: string | null;
 }
 
 export interface SessionInfoResponse {

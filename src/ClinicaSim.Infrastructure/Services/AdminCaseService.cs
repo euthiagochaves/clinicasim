@@ -9,6 +9,8 @@ namespace ClinicaSim.Infrastructure.Services;
 
 public class AdminCaseService(ClinicaSimDbContext dbContext) : IAdminCaseService
 {
+    private const string DefaultMissingAnswer = "No tengo ese dato.";
+
     public async Task<IReadOnlyCollection<AdminCaseItem>> GetCasesAsync(AdminCaseFilters filters, CancellationToken cancellationToken = default)
     {
         var query = dbContext.ClinicalCases.AsNoTracking().AsQueryable();
@@ -111,19 +113,34 @@ public class AdminCaseService(ClinicaSimDbContext dbContext) : IAdminCaseService
     {
         await EnsureCaseExists(caseId, cancellationToken);
 
-        return await dbContext.CaseQuestionAnswers
+        var items = await dbContext.QuestionBanks
             .AsNoTracking()
-            .Where(x => x.CaseId == caseId)
-            .OrderBy(x => x.Question.Text)
-            .Select(x => new CaseQuestionAnswerAdminItem(
+            .Where(x => x.Active)
+            .OrderBy(x => x.Text)
+            .Select(x => new
+            {
                 x.Id,
-                x.CaseId,
-                x.QuestionId,
-                x.Question.Text,
-                x.Question.Section,
-                x.Question.Category,
-                x.AnswerText))
+                x.Text,
+                x.Section,
+                x.Category,
+                Override = x.CaseOverrides.Where(o => o.CaseId == caseId)
+                    .Select(o => new { o.Id, o.AnswerText, o.IsCaseSpecific, o.IsHighlighted })
+                    .FirstOrDefault(),
+                Default = x.DefaultAnswers.Where(d => d.Active).Select(d => d.AnswerText).FirstOrDefault()
+            })
             .ToListAsync(cancellationToken);
+
+        return items.Select(x => new CaseQuestionAnswerAdminItem(
+            x.Override?.Id,
+            caseId,
+            x.Id,
+            x.Text,
+            x.Section,
+            x.Category,
+            x.Override?.AnswerText ?? x.Default ?? DefaultMissingAnswer,
+            x.Override is null,
+            x.Override?.IsCaseSpecific ?? false,
+            x.Override?.IsHighlighted ?? false)).ToList();
     }
 
     public async Task<CaseQuestionAnswerAdminItem> AddAnswerAsync(Guid caseId, CreateCaseQuestionAnswerCommand command, CancellationToken cancellationToken = default)
@@ -134,60 +151,64 @@ public class AdminCaseService(ClinicaSimDbContext dbContext) : IAdminCaseService
 
         var answerText = NormalizeRequired(command.AnswerText, "La respuesta es obligatoria.");
 
-        var duplicate = await dbContext.CaseQuestionAnswers.AnyAsync(x => x.CaseId == caseId && x.QuestionId == command.QuestionId, cancellationToken);
+        var duplicate = await dbContext.CaseQuestionOverrides.AnyAsync(x => x.CaseId == caseId && x.QuestionId == command.QuestionId, cancellationToken);
         if (duplicate)
         {
-            throw new AppException("Ya existe una respuesta para esa pregunta en el caso.", 409);
+            throw new AppException("Ya existe una sobrescritura para esa pregunta en el caso.", 409);
         }
 
         var now = DateTimeOffset.UtcNow;
-        var mapping = new CaseQuestionAnswer
+        var mapping = new CaseQuestionOverride
         {
             Id = Guid.NewGuid(),
             CaseId = caseId,
             QuestionId = command.QuestionId,
             AnswerText = answerText,
+            IsCaseSpecific = command.IsCaseSpecific,
+            IsHighlighted = command.IsHighlighted,
             CreatedAt = now,
             UpdatedAt = now
         };
 
-        dbContext.CaseQuestionAnswers.Add(mapping);
+        dbContext.CaseQuestionOverrides.Add(mapping);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new CaseQuestionAnswerAdminItem(mapping.Id, caseId, command.QuestionId, question.Text, question.Section, question.Category, mapping.AnswerText);
+        return new CaseQuestionAnswerAdminItem(mapping.Id, caseId, command.QuestionId, question.Text, question.Section, question.Category, mapping.AnswerText, false, mapping.IsCaseSpecific, mapping.IsHighlighted);
     }
 
     public async Task<CaseQuestionAnswerAdminItem> UpdateAnswerAsync(Guid caseId, Guid mappingId, UpdateCaseQuestionAnswerCommand command, CancellationToken cancellationToken = default)
     {
         await EnsureCaseExists(caseId, cancellationToken);
 
-        var mapping = await dbContext.CaseQuestionAnswers.FirstOrDefaultAsync(x => x.Id == mappingId && x.CaseId == caseId, cancellationToken)
-            ?? throw new AppException("Mapeo de respuesta no encontrado.", 404);
+        var mapping = await dbContext.CaseQuestionOverrides.FirstOrDefaultAsync(x => x.Id == mappingId && x.CaseId == caseId, cancellationToken)
+            ?? throw new AppException("Sobrescritura de respuesta no encontrada.", 404);
 
         var question = await dbContext.QuestionBanks.FirstOrDefaultAsync(x => x.Id == command.QuestionId, cancellationToken)
             ?? throw new AppException("Pregunta no encontrada.", 404);
 
-        var duplicate = await dbContext.CaseQuestionAnswers.AnyAsync(x => x.CaseId == caseId && x.QuestionId == command.QuestionId && x.Id != mappingId, cancellationToken);
+        var duplicate = await dbContext.CaseQuestionOverrides.AnyAsync(x => x.CaseId == caseId && x.QuestionId == command.QuestionId && x.Id != mappingId, cancellationToken);
         if (duplicate)
         {
-            throw new AppException("Ya existe una respuesta para esa pregunta en el caso.", 409);
+            throw new AppException("Ya existe una sobrescritura para esa pregunta en el caso.", 409);
         }
 
         mapping.QuestionId = command.QuestionId;
         mapping.AnswerText = NormalizeRequired(command.AnswerText, "La respuesta es obligatoria.");
+        mapping.IsCaseSpecific = command.IsCaseSpecific;
+        mapping.IsHighlighted = command.IsHighlighted;
         mapping.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new CaseQuestionAnswerAdminItem(mapping.Id, caseId, mapping.QuestionId, question.Text, question.Section, question.Category, mapping.AnswerText);
+        return new CaseQuestionAnswerAdminItem(mapping.Id, caseId, mapping.QuestionId, question.Text, question.Section, question.Category, mapping.AnswerText, false, mapping.IsCaseSpecific, mapping.IsHighlighted);
     }
 
     public async Task DeleteAnswerAsync(Guid caseId, Guid mappingId, CancellationToken cancellationToken = default)
     {
         await EnsureCaseExists(caseId, cancellationToken);
-        var mapping = await dbContext.CaseQuestionAnswers.FirstOrDefaultAsync(x => x.Id == mappingId && x.CaseId == caseId, cancellationToken)
-            ?? throw new AppException("Mapeo de respuesta no encontrado.", 404);
+        var mapping = await dbContext.CaseQuestionOverrides.FirstOrDefaultAsync(x => x.Id == mappingId && x.CaseId == caseId, cancellationToken)
+            ?? throw new AppException("Sobrescritura de respuesta no encontrada.", 404);
 
-        dbContext.CaseQuestionAnswers.Remove(mapping);
+        dbContext.CaseQuestionOverrides.Remove(mapping);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 
@@ -195,20 +216,34 @@ public class AdminCaseService(ClinicaSimDbContext dbContext) : IAdminCaseService
     {
         await EnsureCaseExists(caseId, cancellationToken);
 
-        return await dbContext.CasePhysicalFindings
+        var items = await dbContext.PhysicalFindingBanks
             .AsNoTracking()
-            .Where(x => x.CaseId == caseId)
-            .OrderBy(x => x.Finding.System)
-            .ThenBy(x => x.Finding.Name)
-            .Select(x => new CasePhysicalFindingAdminItem(
+            .Where(x => x.Active)
+            .OrderBy(x => x.System)
+            .ThenBy(x => x.Name)
+            .Select(x => new
+            {
                 x.Id,
-                x.CaseId,
-                x.FindingId,
-                x.Finding.Name,
-                x.Finding.System,
-                x.Present,
-                x.DetailText))
+                x.Name,
+                x.System,
+                Override = x.CaseOverrides.Where(o => o.CaseId == caseId)
+                    .Select(o => new { o.Id, o.Present, o.DetailText, o.IsCaseSpecific, o.IsHighlighted })
+                    .FirstOrDefault(),
+                Default = x.Defaults.Where(d => d.Active).Select(d => new { d.Present, d.DetailText }).FirstOrDefault()
+            })
             .ToListAsync(cancellationToken);
+
+        return items.Select(x => new CasePhysicalFindingAdminItem(
+            x.Override?.Id,
+            caseId,
+            x.Id,
+            x.Name,
+            x.System,
+            x.Override?.Present ?? x.Default?.Present ?? false,
+            x.Override?.DetailText ?? x.Default?.DetailText,
+            x.Override is null,
+            x.Override?.IsCaseSpecific ?? false,
+            x.Override?.IsHighlighted ?? false)).ToList();
     }
 
     public async Task<CasePhysicalFindingAdminItem> AddFindingAsync(Guid caseId, CreateCasePhysicalFindingCommand command, CancellationToken cancellationToken = default)
@@ -217,62 +252,66 @@ public class AdminCaseService(ClinicaSimDbContext dbContext) : IAdminCaseService
         var finding = await dbContext.PhysicalFindingBanks.FirstOrDefaultAsync(x => x.Id == command.FindingId, cancellationToken)
             ?? throw new AppException("Hallazgo no encontrado.", 404);
 
-        var duplicate = await dbContext.CasePhysicalFindings.AnyAsync(x => x.CaseId == caseId && x.FindingId == command.FindingId, cancellationToken);
+        var duplicate = await dbContext.CasePhysicalFindingOverrides.AnyAsync(x => x.CaseId == caseId && x.FindingId == command.FindingId, cancellationToken);
         if (duplicate)
         {
-            throw new AppException("Ya existe un mapeo para ese hallazgo en el caso.", 409);
+            throw new AppException("Ya existe una sobrescritura para ese hallazgo en el caso.", 409);
         }
 
         var now = DateTimeOffset.UtcNow;
-        var mapping = new CasePhysicalFinding
+        var mapping = new CasePhysicalFindingOverride
         {
             Id = Guid.NewGuid(),
             CaseId = caseId,
             FindingId = command.FindingId,
             Present = command.Present,
             DetailText = NormalizeOptional(command.DetailText),
+            IsCaseSpecific = command.IsCaseSpecific,
+            IsHighlighted = command.IsHighlighted,
             CreatedAt = now,
             UpdatedAt = now
         };
 
-        dbContext.CasePhysicalFindings.Add(mapping);
+        dbContext.CasePhysicalFindingOverrides.Add(mapping);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new CasePhysicalFindingAdminItem(mapping.Id, caseId, mapping.FindingId, finding.Name, finding.System, mapping.Present, mapping.DetailText);
+        return new CasePhysicalFindingAdminItem(mapping.Id, caseId, mapping.FindingId, finding.Name, finding.System, mapping.Present, mapping.DetailText, false, mapping.IsCaseSpecific, mapping.IsHighlighted);
     }
 
     public async Task<CasePhysicalFindingAdminItem> UpdateFindingAsync(Guid caseId, Guid mappingId, UpdateCasePhysicalFindingCommand command, CancellationToken cancellationToken = default)
     {
         await EnsureCaseExists(caseId, cancellationToken);
 
-        var mapping = await dbContext.CasePhysicalFindings.FirstOrDefaultAsync(x => x.Id == mappingId && x.CaseId == caseId, cancellationToken)
-            ?? throw new AppException("Mapeo de hallazgo no encontrado.", 404);
+        var mapping = await dbContext.CasePhysicalFindingOverrides.FirstOrDefaultAsync(x => x.Id == mappingId && x.CaseId == caseId, cancellationToken)
+            ?? throw new AppException("Sobrescritura de hallazgo no encontrada.", 404);
 
         var finding = await dbContext.PhysicalFindingBanks.FirstOrDefaultAsync(x => x.Id == command.FindingId, cancellationToken)
             ?? throw new AppException("Hallazgo no encontrado.", 404);
 
-        var duplicate = await dbContext.CasePhysicalFindings.AnyAsync(x => x.CaseId == caseId && x.FindingId == command.FindingId && x.Id != mappingId, cancellationToken);
+        var duplicate = await dbContext.CasePhysicalFindingOverrides.AnyAsync(x => x.CaseId == caseId && x.FindingId == command.FindingId && x.Id != mappingId, cancellationToken);
         if (duplicate)
         {
-            throw new AppException("Ya existe un mapeo para ese hallazgo en el caso.", 409);
+            throw new AppException("Ya existe una sobrescritura para ese hallazgo en el caso.", 409);
         }
 
         mapping.FindingId = command.FindingId;
         mapping.Present = command.Present;
         mapping.DetailText = NormalizeOptional(command.DetailText);
+        mapping.IsCaseSpecific = command.IsCaseSpecific;
+        mapping.IsHighlighted = command.IsHighlighted;
         mapping.UpdatedAt = DateTimeOffset.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new CasePhysicalFindingAdminItem(mapping.Id, caseId, mapping.FindingId, finding.Name, finding.System, mapping.Present, mapping.DetailText);
+        return new CasePhysicalFindingAdminItem(mapping.Id, caseId, mapping.FindingId, finding.Name, finding.System, mapping.Present, mapping.DetailText, false, mapping.IsCaseSpecific, mapping.IsHighlighted);
     }
 
     public async Task DeleteFindingAsync(Guid caseId, Guid mappingId, CancellationToken cancellationToken = default)
     {
         await EnsureCaseExists(caseId, cancellationToken);
-        var mapping = await dbContext.CasePhysicalFindings.FirstOrDefaultAsync(x => x.Id == mappingId && x.CaseId == caseId, cancellationToken)
-            ?? throw new AppException("Mapeo de hallazgo no encontrado.", 404);
+        var mapping = await dbContext.CasePhysicalFindingOverrides.FirstOrDefaultAsync(x => x.Id == mappingId && x.CaseId == caseId, cancellationToken)
+            ?? throw new AppException("Sobrescritura de hallazgo no encontrada.", 404);
 
-        dbContext.CasePhysicalFindings.Remove(mapping);
+        dbContext.CasePhysicalFindingOverrides.Remove(mapping);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 

@@ -9,5 +9,6 @@ public class PhysicalFindingBank
     public bool Active { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public ICollection<CasePhysicalFinding> CasePhysicalFindings { get; set; } = new List<CasePhysicalFinding>();
+    public ICollection<PhysicalFindingDefault> Defaults { get; set; } = new List<PhysicalFindingDefault>();
+    public ICollection<CasePhysicalFindingOverride> CaseOverrides { get; set; } = new List<CasePhysicalFindingOverride>();
 }

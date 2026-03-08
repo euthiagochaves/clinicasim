@@ -10,5 +10,6 @@ public class QuestionBank
     public bool Active { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
-    public ICollection<CaseQuestionAnswer> CaseQuestionAnswers { get; set; } = new List<CaseQuestionAnswer>();
+    public ICollection<QuestionDefaultAnswer> DefaultAnswers { get; set; } = new List<QuestionDefaultAnswer>();
+    public ICollection<CaseQuestionOverride> CaseOverrides { get; set; } = new List<CaseQuestionOverride>();
 }
